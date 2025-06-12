@@ -194,6 +194,19 @@ class Permintaan_barang_model extends CI_Model
         return $query->result_array();
     }
 
+    //Mendapatakan nama barang dan jumlahnya di permintaan group by id_barang dan nama barang sort by jumlah descending
+    public function get_barang_terbanyak($tahun) {
+        $this->db->select('barang.id_barang, barang.nama_barang, SUM(permintaan.jumlah) as total_jumlah');
+        $this->db->from('permintaan');
+        $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
+        $this->db->where('permintaan.status', 'Approved');
+        $this->db->where('YEAR(tanggal)', $tahun);
+        $this->db->group_by('barang.id_barang, barang.nama_barang');
+        $this->db->order_by('total_jumlah', 'DESC');
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
 	public function get_by_date_and_user($tanggal, $id_user) {
         $this->db->select('*');
         $this->db->from('permintaan p');

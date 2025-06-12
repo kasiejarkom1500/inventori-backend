@@ -210,7 +210,40 @@ class Dashboard_api extends ApiController
             }
     }
 
+    // Method untuk mendapatkan pemakaian barang terbanyak per tahun tanpa kategori per tahun tanpa kategori
+    public function barang_terbanyak_get($tahun = null)
+    {
+        if ($tahun === null) {
+            $this->response([
+                'status' => false,
+                'message' => 'Parameter tahun (YYYY) diperlukan.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+
+        // Validasi format YYYY
+        if (!preg_match('/^\d{4}$/', $tahun) || !DateTime::createFromFormat('Y', $tahun)) {
+            $this->response([
+                'status' => false,
+                'message' => 'Format parameter tahun tidak valid. Gunakan YYYY.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
     
+        $pemakaian_barang = $this->Permintaan_barang_model->get_barang_terbanyak($tahun);
+        if ($pemakaian_barang) {
+            $this->response([
+                'status' => true,
+                'data' => $pemakaian_barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan',
+                'data' => []
+            ], RESTController::HTTP_OK);
+        }
+    }
 
     
 }
