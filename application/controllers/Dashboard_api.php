@@ -175,5 +175,42 @@ class Dashboard_api extends ApiController
             }
 	}
 
+    //total pemakaian bulanan setiap ruangan parameter tahun tanpa kategori
+    public function total_pemakaian_bulanan_ruangan_get($tahun = null)
+    {
+        if ($tahun === null) {
+            $this->response([
+                'status' => false,
+                'message' => 'Parameter tahun (YYYY) diperlukan.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+
+        // Validasi format YYYY
+        if (!preg_match('/^\d{4}$/', $tahun) || !DateTime::createFromFormat('Y', $tahun)) {
+            $this->response([
+                'status' => false,
+                'message' => 'Format parameter tahun tidak valid. Gunakan YYYY.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+        $pemakaian_barang = $this->Permintaan_barang_model->get_pemakaian_tahunan_ruangan($tahun);
+
+        if ($pemakaian_barang) {
+                $this->response([
+                    'status' => true,
+                    'data' => $pemakaian_barang
+                ], RESTController::HTTP_OK);
+            } else {
+                $this->response([
+                    'status' => false,
+                    'message' => 'Data tidak ditemukan',
+                    'data' => []
+                ], RESTController::HTTP_OK);
+            }
+    }
+
+    
+
     
 }

@@ -137,3 +137,6 @@ $route['api/dashboard_permintaan/(:any)'] = 'Dashboard_api/jumlah_permintaan/$1'
 //routes pemakaian bulanan
 $route['api/total_pemakaian_bulanan/(:any)/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan/$1/$2';
 
+//routes pemakaian bulanan ruangan
+$route['api/pemakaian_ruangan/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan_ruangan/$1';
+

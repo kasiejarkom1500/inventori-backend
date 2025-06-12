@@ -169,6 +169,18 @@ class Permintaan_barang_model extends CI_Model
         return $query->result_array();
     }
 
+    //Mendapatkan pemakaian barang selama 1 tahun terakhir group by ruangan
+    public function get_pemakaian_tahunan_ruangan($tahun) {
+        $this->db->select('admin_ruangan.ruangan, SUM(permintaan.jumlah) as total_pemakaian');
+        $this->db->from('permintaan');
+        $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
+        $this->db->where('YEAR(permintaan.tanggal)', $tahun);
+        $this->db->where('permintaan.status', 'Approved');
+        $this->db->group_by('admin_ruangan.ruangan');
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
     // Mendapatkan pemakaian barang berdasarkan tahun dan kategori group by bulan dan tahun status nya Approved 
     public function get_pemakaian_bulanan($tahun, $kategori) {
         $this->db->select('MONTH(tanggal) as bulan, YEAR(tanggal) as tahun, SUM(jumlah) as total_pemakaian');
