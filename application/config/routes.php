@@ -133,5 +133,7 @@ $route['api/get_users'] = 'User_api/all_user';
 //Dashboard
 $route['api/total_barang/(:any)'] = 'Dashboard_api/total_barang/$1';
 $route['api/total_stok/(:any)'] = 'Dashboard_api/total_stok/$1';
-
+$route['api/dashboard_permintaan/(:any)'] = 'Dashboard_api/jumlah_permintaan/$1';
+//routes pemakaian bulanan
+$route['api/total_pemakaian_bulanan/(:any)/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan/$1/$2';
 
