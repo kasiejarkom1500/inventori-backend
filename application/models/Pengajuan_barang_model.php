@@ -61,7 +61,7 @@ class Pengajuan_barang_model extends CI_Model
         $this->db->select('tanggal, pengajuan.id_user,pengajuan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_pengajuan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
         $this->db->from('pengajuan');
         $this->db->join('admin_ruangan','pengajuan.id_ruangan = admin_ruangan.id_ruangan');
-        $this->db->group_by(array('tanggal', 'pengajuan.id_user','admin_ruangan.ruangan'));
+        $this->db->group_by(array('tanggal', 'pengajuan.id_user', 'pengajuan.id_ruangan', 'admin_ruangan.ruangan'));
         $query = $this->db->get();
         return $query->result_array();
     }

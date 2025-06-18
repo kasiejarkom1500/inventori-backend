@@ -6,66 +6,101 @@ class Barang_model extends CI_Model
 	// 	return $this->db->get('barang')->result_array();
 
 	// }
+
 	
-	public function tampil_data_all()
+	
+	public function tampil_data_all($kabupaten_id = null)
 	{
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
 		$this->db->where('temp',0);
+		if ($kabupaten_id !== null) {
+			$this->db->where('barang.kabupaten_id', $kabupaten_id);
+		}
 		$query = $this->db->get();
 		return $query->result_array();
 	}
 	
-    public function get_sum($kategori)
+    public function get_sum($kategori, $kabupaten_id = null)
     {
         $this->db->select('COUNT(*) as total');
         $this->db->from('barang');
         $this->db->where('kategori', $kategori);
         $this->db->where('temp', 0);
+        if ($kabupaten_id !== null) {
+			$this->db->where('kabupaten_id', $kabupaten_id);
+		}
         $query = $this->db->get();
         return $query->row()->total; // Mengembalikan angka, bukan objek
     }
     
-    public function get_sum_stok($kategori)
+    public function get_sum_stok($kategori, $kabupaten_id = null)
     {
         $this->db->select('SUM(stok) as total_stok');
         $this->db->from('barang');
         $this->db->where('kategori', $kategori);
         $this->db->where('temp', 0);
+        if ($kabupaten_id !== null) {
+			$this->db->where('kabupaten_id', $kabupaten_id);
+		}
         $query = $this->db->get();
         return $query->row()->total_stok; // Mengembalikan angka, bukan objek
     }
 
+	// mendapatkan data barang yang stoknya 5% dibandingkan dengan stok_dasar
+	public function get_barang_stok_minimal($kabupaten_id = null)
+	{
+		$this->db->select('barang.id_barang, barang.nama_barang, stok, stok_dasar as "stok minimum"');
+		$this->db->from('barang');
+		$this->db->where('barang.stok < (barang.stok_dasar * 0.05)');
+		$this->db->where('temp',0);
+		if ($kabupaten_id !== null) {
+			$this->db->where('barang.kabupaten_id', $kabupaten_id);
+		}
+		$query = $this->db->get();
+		return $query->result_array();
+	}
 
-	public function tampil_data()
+
+	public function tampil_data($kabupaten_id = null)
 	{
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
 		$this->db->where('barang.kategori', "ATK");
 		$this->db->where('temp',0);
+		if ($kabupaten_id !== null) {
+			$this->db->where('barang.kabupaten_id', $kabupaten_id);
+		}
 		$query = $this->db->get();
 		return $query->result_array();
 	}
 	
-	public function tampil_data_ark()
+	public function tampil_data_ark($kabupaten_id = null)
 	{
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
 		$this->db->where('barang.kategori', "ARK");
 		$this->db->where('temp',0);
+		if ($kabupaten_id !== null) {
+			$this->db->where('barang.kabupaten_id', $kabupaten_id);
+		}
 		$query = $this->db->get();
 		return $query->result_array();
 	}
 
-	public function exists_kd_barang($kd_barang)
+	public function exists_kd_barang($kd_barang, $kabupaten_id = null)
 	{
 		$this->db->where('kd_barang', $kd_barang);
+		if ($kabupaten_id !== null) {
+			$this->db->where('kabupaten_id', $kabupaten_id);
+		}
 		$query = $this->db->get('barang');
 
 		return $query->num_rows() > 0;
+
 	}
 
 	public function insert_harga_pengajuan($data)
@@ -149,10 +184,12 @@ class Barang_model extends CI_Model
       </div>');
 	}
 	
-	public function hapus_api($id)
+	public function hapus_api($id, $kabupaten_id = null)
 	{
 		$this->db->where('id_barang', $id);
-		$this->db->delete('');
+		if ($kabupaten_id !== null) {
+			$this->db->where('kabupaten_id', $kabupaten_id);
+		}
 		return $this->db->delete('barang');
 	}
 
@@ -160,11 +197,15 @@ class Barang_model extends CI_Model
 	{
 		$kd_barang = $this->input->post('kd_barang');
 		$id_barang = $this->input->post('id');
+		$kabupaten_id_val = $this->input->post('kabupaten_id'); // Diasumsikan ada input kabupaten_id
 
 		// Check for duplicate kd_barang
 		$this->db->select('id_barang');
 		$this->db->from('barang');
 		$this->db->where('kd_barang', $kd_barang);
+		if ($kabupaten_id_val !== null) {
+			$this->db->where('kabupaten_id', $kabupaten_id_val);
+		}
 		$this->db->where('id_barang !=', $id_barang); // Exclude the current record
 		$query = $this->db->get();
 
@@ -252,9 +293,6 @@ class Barang_model extends CI_Model
 		$this->db->set('stok', 'stok - ' . $jumlah, FALSE);
 		$this->db->where('id_barang', $id_barang);
 		$this->db->update('barang');
-		
-		
-
 	}
 
 	public function tambah_stok_barang($id_barang, $jumlah)
@@ -326,5 +364,12 @@ class Barang_model extends CI_Model
 		} else {
 			log_message('error', 'Error fetching barang data');
 		}
+	}
+
+	public function fetch_subkategori()
+	{
+		$this->db->select('*');
+		$this->db->from('sub_kategori');
+		return $this->db->get()->result_array();
 	}
 }

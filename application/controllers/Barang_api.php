@@ -401,47 +401,19 @@ class Barang_api extends ApiController
         
     }
 
+    public function subkategori_get() {
+        $subkategori = $this->Barang_model->fetch_subkategori();
+        if ($subkategori) {
+            $this->response([
+                'status' => true,
+                'data' => $subkategori
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
 
-	public function download_excel()
-	{
-		// Create a new Spreadsheet object
-		$spreadsheet = new Spreadsheet();
-
-		// Set properties
-		$spreadsheet->getProperties()
-			->setCreator("Your Name")
-			->setLastModifiedBy("Your Name")
-			->setTitle("Template Barang")
-			->setSubject("Template Barang")
-			->setDescription("Template Excel for Barang")
-			->setKeywords("excel phpoffice phpspreadsheet template")
-			->setCategory("Template");
-
-		// Add data headers
-		$sheet = $spreadsheet->getActiveSheet();
-		$sheet->setCellValue('A1', 'Kd Barang');
-		$sheet->setCellValue('B1', 'Nama Barang');
-		$sheet->setCellValue('C1', 'Jenis Barang');
-		$sheet->setCellValue('D1', 'Satuan');
-		$sheet->setCellValue('E1', 'Stok');
-		$sheet->setCellValue('F1', 'Harga Satuan');
-		// $sheet->setCellValue('G1', 'Harga Pengajuan');
-
-		// Set headers bold
-		$sheet->getStyle('A1:F1')->getFont()->setBold(true);
-
-		// Set auto column width
-		foreach (range('A', 'F') as $columnID) {
-			$sheet->getColumnDimension($columnID)->setAutoSize(true);
-		}
-		// Prepare the Excel file
-		$filename = 'template_barang.xlsx';
-		$writer = new Xlsx($spreadsheet);
-
-		// Save Excel file to php://output (browser)
-		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-		header('Content-Disposition: attachment;filename="' . $filename . '"');
-		header('Cache-Control: max-age=0');
-		$writer->save('php://output');
-	}
 }

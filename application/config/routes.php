@@ -141,4 +141,8 @@ $route['api/total_pemakaian_bulanan/(:any)/(:any)'] = 'Dashboard_api/total_pemak
 $route['api/pemakaian_ruangan/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan_ruangan/$1';
 //routes barang terbanyak
 $route['api/barang_terbanyak/(:any)'] = 'Dashboard_api/barang_terbanyak/$1';
+//routes barang stok minimal
+$route['api/barang_stok_minimal'] = 'Dashboard_api/barang_stok_minimal';
+//route ambil subkategori
+$route['api/get_subkategori'] = 'Barang_api/subkategori';
 

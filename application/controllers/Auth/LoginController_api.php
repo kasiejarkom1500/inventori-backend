@@ -89,11 +89,7 @@ class LoginController_api extends RestController {
             $user = $this->cek_login($username, $password);
     
             if ($user) {
-                $token = generate_jwt([
-                    'id_user' => $user['id_user'],
-                    'username' => $user['username'],
-                    'role' => $user['role']
-                ]);
+                $token = generate_jwt($user);
     
                 $this->response([
                     'status' => TRUE,

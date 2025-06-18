@@ -245,5 +245,24 @@ class Dashboard_api extends ApiController
         }
     }
 
+    // method mendapatkan barang dengan stok minimal
+    public function barang_stok_minimal_get()
+    {
+        $barang_stok_minimal = $this->Barang_model->get_barang_stok_minimal();
+        
+        if ($barang_stok_minimal) {
+            $this->response([
+                'status' => true,
+                'data' => $barang_stok_minimal
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan',
+                'data' => []
+            ], RESTController::HTTP_OK);
+        }
+    }
+
     
 }
