@@ -15,11 +15,15 @@ class Barang_masuk_model extends CI_Model
         return $query->result_array();
     }
 
-    public function data_pembelian()
+    public function data_pembelian($kabupaten_id = null)
     {
-        $this->db->select('pembelian.*,mst_sumber.nama_sumber');
+        $this->db->select('pembelian.*, mst_sumber.nama_sumber');
         $this->db->from('pembelian');
         $this->db->join('mst_sumber', 'pembelian.id_sumber = mst_sumber.id_sumber');
+
+        if ($kabupaten_id !== null) {
+            $this->db->where('pembelian.id_satker', $kabupaten_id);
+        }
 
         $query = $this->db->get();
         return $query->result_array();

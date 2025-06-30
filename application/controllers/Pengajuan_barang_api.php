@@ -37,7 +37,7 @@ class Pengajuan_barang_api extends ApiController
 	public function transaksi_pengajuan_get()
 	{
 
-		$permintaan_barang = $this->Pengajuan_barang_model->get_grouped_by_date();
+		$permintaan_barang = $this->Pengajuan_barang_model->get_grouped_by_date($this->decoded_token['id_satker']);
 		
 		if ($permintaan_barang) {
                 $this->response([

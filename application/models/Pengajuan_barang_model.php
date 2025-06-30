@@ -48,29 +48,34 @@ class Pengajuan_barang_model extends CI_Model
 	}
 
 
-	
-	public function get_grouped_by_date() {
-        $this->db->select('tanggal, pengajuan.id_user,pengajuan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_pengajuan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
-        $this->db->from('pengajuan');
-        $this->db->join('admin_ruangan','pengajuan.id_ruangan = admin_ruangan.id_ruangan');
-        $this->db->group_by(array('tanggal', 'pengajuan.id_user', 'pengajuan.id_ruangan', 'admin_ruangan.ruangan'));
-        $query = $this->db->get();
-        return $query->result_array();
-    }
-    
-    public function get_by_date($id_ruangan,$tanggal) {
-        $this->db->select('id_pengajuan, tanggal,id_ruangan, kd_barang, harga_pengajuan as harga_satuan ,nama_barang, kategori, satuan, jumlah, status, temp');
-        $this->db->from('pengajuan');
-        $this->db->join('barang','pengajuan.id_barang = barang.id_barang');
-        $this->db->where('id_ruangan',$id_ruangan);
-        $this->db->where('tanggal',$tanggal);
-        $query = $this->db->get();
-        return $query->result_array();
-    }
+
+	public function get_grouped_by_date($kabupaten_id = null)
+	{
+		$this->db->select('tanggal, pengajuan.id_user,pengajuan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_pengajuan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
+		$this->db->from('pengajuan');
+		$this->db->join('admin_ruangan', 'pengajuan.id_ruangan = admin_ruangan.id_ruangan');
+		if ($kabupaten_id !== null) {
+			$this->db->where('admin_ruangan.id_satker', $kabupaten_id);
+		}
+		$this->db->group_by(array('tanggal', 'pengajuan.id_user', 'pengajuan.id_ruangan', 'admin_ruangan.ruangan'));
+		$query = $this->db->get();
+		return $query->result_array();
+	}
+
+	public function get_by_date($id_ruangan, $tanggal)
+	{
+		$this->db->select('id_pengajuan, tanggal,id_ruangan, kd_barang, harga_pengajuan as harga_satuan ,nama_barang, kategori, satuan, jumlah, status, temp');
+		$this->db->from('pengajuan');
+		$this->db->join('barang', 'pengajuan.id_barang = barang.id_barang');
+		$this->db->where('id_ruangan', $id_ruangan);
+		$this->db->where('tanggal', $tanggal);
+		$query = $this->db->get();
+		return $query->result_array();
+	}
 
 	public function get_by_date_and_user($tanggal, $id_user)
 	{
-		$this->db->select('p.tanggal, b.kd_barang, b.nama_barang, b.kategori, b.satuan, p.jumlah, p.total_harga, r. id_ruangan, p.status , r.ruangan' );
+		$this->db->select('p.tanggal, b.kd_barang, b.nama_barang, b.kategori, b.satuan, p.jumlah, p.total_harga, r. id_ruangan, p.status , r.ruangan');
 		$this->db->from('pengajuan p');
 		$this->db->join('barang b', 'p.id_barang = b.id_barang', 'left');
 		$this->db->join('user u', 'p.id_user = u.id_user', 'left');
@@ -92,7 +97,7 @@ class Pengajuan_barang_model extends CI_Model
 		$this->db->insert('pengajuan', $data);
 	}
 
-	public function update_status($id_pengajuan, $status,$jumlah)
+	public function update_status($id_pengajuan, $status, $jumlah)
 	{
 		$data = array(
 			'status' => $status,

@@ -77,7 +77,7 @@ class Barang_api extends ApiController
     public function barang_get()
     {
 
-        $barang = $this->Barang_model->tampil_data_all();
+        $barang = $this->Barang_model->tampil_data_all($this->decoded_token['id_satker']);
         if ($barang) {
             $this->response([
                 'status' => true,

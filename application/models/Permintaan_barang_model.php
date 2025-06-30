@@ -27,66 +27,68 @@ class Permintaan_barang_model extends CI_Model
 
 
         $transaksi = "
-        SELECT 
-            masuk.id_barang,
-            barang.nama_barang,
-            barang.kd_barang,
-            barang.satuan,
-            masuk.tgl_masuk AS tanggal,
-            beli.no_kuitansi as faktur,
-            SUM(masuk.jumlah) AS jumlah_masuk,
-            0 AS jumlah_keluar,
-            current_stok,
-            sumber.nama_sumber AS uraian,
-            barang.kategori
-        FROM 
-            barang_masuk AS masuk
-        JOIN
-            pembelian AS beli
-        ON
-            beli.id_pembelian = masuk.id_pembelian
-        JOIN
-            barang AS barang
-        ON
-            barang.id_barang = masuk.id_barang
-        JOIN
-            mst_sumber AS sumber
-        ON
-            sumber.id_sumber = beli.id_sumber
-        WHERE
-            masuk.tgl_masuk BETWEEN ? AND ? AND barang.kabupaten_id = ?  -- Parameter binding untuk tanggal masuk
-        GROUP BY 
-            masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori
+        SELECT * FROM (
+            SELECT 
+                masuk.id_barang,
+                barang.nama_barang,
+                barang.kd_barang,
+                barang.satuan,
+                masuk.tgl_masuk AS tanggal,
+                beli.no_kuitansi as faktur,
+                SUM(masuk.jumlah) AS jumlah_masuk,
+                0 AS jumlah_keluar,
+                current_stok,
+                sumber.nama_sumber AS uraian,
+                barang.kategori
+            FROM 
+                barang_masuk AS masuk
+            JOIN
+                pembelian AS beli
+            ON
+                beli.id_pembelian = masuk.id_pembelian
+            JOIN
+                barang AS barang
+            ON
+                barang.id_barang = masuk.id_barang
+            JOIN
+                mst_sumber AS sumber
+            ON
+                sumber.id_sumber = beli.id_sumber
+            WHERE
+                masuk.tgl_masuk BETWEEN ? AND ? AND barang.kabupaten_id = ?
+            GROUP BY 
+                masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori
+                
+            UNION
             
-        UNION
-        
-        SELECT 
-            keluar.id_barang,
-            barang.nama_barang,
-            barang.kd_barang,
-            barang.satuan,
-            keluar.tanggal AS tanggal,
-            concat(REPLACE(keluar.tanggal, '-', ''),'-',keluar.id_ruangan) AS faktur,
-            0 AS jumlah_masuk,
-            SUM(keluar.jumlah) AS jumlah_keluar,
-            current_stok,
-            ruangan.ruangan AS uraian,
-            barang.kategori
-        FROM 
-            permintaan AS keluar
-        JOIN
-            barang AS barang
-        ON
-            barang.id_barang = keluar.id_barang
-        JOIN
-            admin_ruangan AS ruangan
-        ON
-            ruangan.id_ruangan = keluar.id_ruangan
-        WHERE
-            keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved'  -- Parameter binding untuk tanggal keluar
-        GROUP BY 
-            keluar.id_barang, keluar.tanggal, faktur,barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori";
-
+            SELECT 
+                keluar.id_barang,
+                barang.nama_barang,
+                barang.kd_barang,
+                barang.satuan,
+                keluar.tanggal AS tanggal,
+                concat(REPLACE(keluar.tanggal, '-', ''),'-',keluar.id_ruangan) AS faktur,
+                0 AS jumlah_masuk,
+                SUM(keluar.jumlah_approved) AS jumlah_keluar,
+                current_stok,
+                ruangan.ruangan AS uraian,
+                barang.kategori
+            FROM 
+                permintaan AS keluar
+            JOIN
+                barang AS barang
+            ON
+                barang.id_barang = keluar.id_barang
+            JOIN
+                admin_ruangan AS ruangan
+            ON
+                ruangan.id_ruangan = keluar.id_ruangan
+            WHERE
+                keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved' AND keluar.jumlah_approved > 0
+            GROUP BY 
+                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori
+        ) AS union_result
+        ORDER BY tanggal ASC";
         $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id));
 
         return $query->result_array();
@@ -111,7 +113,7 @@ class Permintaan_barang_model extends CI_Model
                 
                 UNION ALL
                 
-                SELECT id_barang, 0 AS total_masuk, jumlah AS total_keluar 
+                SELECT id_barang, 0 AS total_masuk, jumlah_approved AS total_keluar 
                 FROM permintaan 
                 WHERE tanggal BETWEEN " . $this->db->escape($tgl_mulai) . " AND " . $this->db->escape($tgl_selesai) . "AND status = 'Approved'
             ) AS combined_data

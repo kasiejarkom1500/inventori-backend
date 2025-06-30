@@ -1,9 +1,10 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
+require_once APPPATH . 'core/ApiController.php';
 
 use chriskacerguis\RestServer\RestController;
 
-class Sumber extends RestController {
+class Sumber extends ApiController {
     
     public function __construct(){
         parent::__construct();
@@ -31,7 +32,7 @@ class Sumber extends RestController {
 	
 	public function sumber_all_get()
     {
-        $data_sumber = $this->Sumber_model->get_sumber();
+        $data_sumber = $this->Sumber_model->get_sumber($this->decoded_token['id_satker']);
         
         if ($data_sumber) {
                 $this->response([
@@ -42,7 +43,7 @@ class Sumber extends RestController {
                 $this->response([
                     'status' => false,
                     'message' => 'Data tidak ditemukan'
-                ], RESTController::HTTP_NOT_FOUND);
+                ], RESTController::HTTP_OK);
             }
     }
 

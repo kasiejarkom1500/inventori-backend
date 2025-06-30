@@ -65,7 +65,7 @@ class Barang_masuk_api extends ApiController
     public function all_pembelian_get() {
         try {
             // Ambil data barang masuk dari model
-            $data_barang_masuk = $this->Barang_masuk_model->data_pembelian();
+            $data_barang_masuk = $this->Barang_masuk_model->data_pembelian($this->decoded_token['id_satker']);
 
             // Periksa apakah data ditemukan
             if ($data_barang_masuk) {
@@ -144,6 +144,7 @@ class Barang_masuk_api extends ApiController
             }
             
             $data_pembelian = [
+                'id_satker' => $this->decoded_token['id_satker'],
                 'no_kuitansi' => $item['no_kuitansi'],
                 'id_sumber' => $item['id_sumber'],
                 'tgl_masuk' => $item['tgl_masuk']
