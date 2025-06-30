@@ -1,4 +1,5 @@
 <?php
+
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
@@ -6,7 +7,7 @@ function generate_jwt($data)
 {
     $key = getenv('JWT_SECRET') ?: 'your-secret-key';
     $issuedAt = time();
-    $expirationTime = $issuedAt + 3600; // 1 jam
+    $expirationTime = $issuedAt + 86400; // 1 jam
     $payload = [
         'iat' => $issuedAt,
         'exp' => $expirationTime,

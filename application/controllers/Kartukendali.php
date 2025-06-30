@@ -1,19 +1,22 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+defined('BASEPATH') or exit('No direct script access allowed');
+require_once APPPATH . 'core/ApiController.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use chriskacerguis\RestServer\RestController;
 
-class KartuKendali extends RestController {
+class KartuKendali extends ApiController
+{
 
-    public function __construct() {
+    public function __construct()
+    {
         parent::__construct();
-        
+
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
-        
+
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE,PUT');
@@ -21,26 +24,27 @@ class KartuKendali extends RestController {
             header('Access-Control-Max-Age: 86400'); // Cache preflight response for 24 hours
             exit(0); // Hentikan eksekusi lebih lanjut
         }
-        
-        
+
+
         // Load necessary libraries and helpers
         $this->load->helper(['url', 'file']);
-		$this->load->model('Permintaan_barang_model');
-		$this->load->model('Barang_model');
-		$this->load->model('User_model');
-		$this->load->model('ruangan_model');        
+        $this->load->model('Permintaan_barang_model');
+        $this->load->model('Barang_model');
+        $this->load->model('User_model');
+        $this->load->model('ruangan_model');
     }
 
-    public function generate_post() {
+    public function generate_post()
+    {
         // Capture POST data (e.g., details for the PDF)
         // $data = $this->input->post();
-        
+
         $tgl_mulai = $this->post('tgl_mulai');
         $tgl_selesai = $this->post('tgl_selesai');
-        
-        
-        $data_keluar = $this->Permintaan_barang_model->karken_data($tgl_mulai,$tgl_selesai);
-        
+
+
+        $data_keluar = $this->Permintaan_barang_model->karken_data($tgl_mulai, $tgl_selesai, $this->decoded_token['id_satker']);
+
         // Proses data untuk dikelompokkan
         $groupedData = [];
         foreach ($data_keluar as $item) {
@@ -52,7 +56,7 @@ class KartuKendali extends RestController {
                     break;
                 }
             }
-        
+
             if ($foundIndex === null) {
                 // Jika belum ada grup, tambahkan grup baru
                 $groupedData[] = [
@@ -65,7 +69,7 @@ class KartuKendali extends RestController {
                 ];
                 $foundIndex = count($groupedData) - 1; // Index grup baru
             }
-        
+
             // Tambahkan data barang ke grup yang ditemukan
             $groupedData[$foundIndex]["rows"][] = [
                 "tanggal" => $item["tanggal"],
@@ -76,64 +80,64 @@ class KartuKendali extends RestController {
                 "current_stok" => $item["current_stok"]
             ];
         }
-        
+
         // Return the file as a response
-            return $this->response([
-                'status' => true,
-                'message' => 'PDF generated successfully',
-                'download_url' => $groupedData
-            ], RestController::HTTP_OK);
-        
-        
+        return $this->response([
+            'status' => true,
+            'message' => 'PDF generated successfully',
+            'download_url' => $groupedData
+        ], RestController::HTTP_OK);
+
+
         $url = [];
         foreach ($groupedData as $pdfData) {
             $pdfData['logo'] = base_url('/img/logo.png');
-            
+
             $html = $this->load->view('kartu_kendali', $pdfData, true);
-            
+
             // Aktifkan remote image
             $options = new Options();
             $options->set('isRemoteEnabled', true);
-            
+
             // Inisialisasi Dompdf dengan opsi
             $dompdf = new Dompdf($options);
-    
+
             // $dompdf = new Dompdf();
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'portrait');
             $dompdf->render();
-    
+
             // Save the PDF temporarily
             $output = $dompdf->output();
-            $name = 'downloads/Kartu_Kendali_'.$pdfData['id_barang'].'.pdf';
+            $name = 'downloads/Kartu_Kendali_' . $pdfData['id_barang'] . '.pdf';
             $filePath = FCPATH . $name;
             file_put_contents($filePath, $output);
-            
+
             $url[] = base_url($name);
-            
         }
-        
-           
-    
-            // Return the file as a response
-            return $this->response([
-                'status' => true,
-                'message' => 'PDF generated successfully',
-                'download_url' => $url
-            ], RestController::HTTP_OK);
+
+
+
+        // Return the file as a response
+        return $this->response([
+            'status' => true,
+            'message' => 'PDF generated successfully',
+            'download_url' => $url
+        ], RestController::HTTP_OK);
     }
-    
-    
-    public function summary_post() {
+
+
+    public function summary_post()
+    {
         // Capture POST data (e.g., details for the PDF)
         // $data = $this->input->post();
-        
+
         $tgl_mulai = $this->post('tgl_mulai');
         $tgl_selesai = $this->post('tgl_selesai');
-        
-        $data_pengajuan = $this->Permintaan_barang_model->summary_karken($tgl_mulai, $tgl_selesai);
-       
-        if(!$data_pengajuan) {
+
+        $data_pengajuan = $this->Permintaan_barang_model->summary_karken($tgl_mulai, $tgl_selesai, $this->decoded_token['id_satker']);
+
+        if (!$data_pengajuan) {
             return $this->response([
                 'status' => false,
                 'message' => 'Gagal mendapatkan data'
@@ -146,9 +150,5 @@ class KartuKendali extends RestController {
                 'data' => $data_pengajuan
             ], RestController::HTTP_OK);
         }
-        
-        
-        
     }
 }
-?>

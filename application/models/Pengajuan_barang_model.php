@@ -8,20 +8,12 @@ class Pengajuan_barang_model extends CI_Model
 		// var_dump($data);
 		$this->db->insert('pengajuan', $data);
 
-		// $error = $this->db->error();
-		// if (!empty($error['code'])) {
-			// Display error message as JSON
-			// echo json_encode([
-				// 'status' => 'error',
-				//'message' => $error['message']
-			// ]);
-		// } else {
-			// Display success message as JSON
-			// echo json_encode([
-				// 'status' => 'success',
-				// 'message' => 'Data inserted successfully'
-			// ]);
-		//}
+		// Check if the insert was successful
+		if ($this->db->affected_rows() <= 0) {
+			return false; // Insert failed
+		}
+		return $this->db->insert_id(); // Return the ID of the inserted record
+
 	}
 
 
@@ -161,5 +153,11 @@ class Pengajuan_barang_model extends CI_Model
 		$this->db->where('YEAR(tanggal)', date('Y')); // Data untuk tahun ini
 		$query = $this->db->get('pengajuan');
 		return $query->result_array();
+	}
+
+	public function hapus_pengajuan($id_pengajuan)
+	{
+		$this->db->where('id_pengajuan', $id_pengajuan);
+		return $this->db->delete('pengajuan');
 	}
 }

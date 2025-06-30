@@ -11,21 +11,21 @@ use chriskacerguis\RestServer\RestController;
 
 class Barang_api extends ApiController
 {
-	public $Barang_model;
-	public $barangModel;
-	public $form_validation;
-	public $db;
-	public $session;
+    public $Barang_model;
+    public $barangModel;
+    public $form_validation;
+    public $db;
+    public $session;
 
 
-	public function __construct()
-	{
-		parent::__construct();
-		
-		header('Access-Control-Allow-Origin: *');
+    public function __construct()
+    {
+        parent::__construct();
+
+        header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
-        
+
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE,PUT');
@@ -36,93 +36,97 @@ class Barang_api extends ApiController
 
 
 
-		$this->load->model('Barang_model');
-		$this->load->helper('form');
-		$this->load->helper('url');
+        $this->load->model('Barang_model');
+        $this->load->helper('form');
+        $this->load->helper('url');
         $this->load->config('rest');
         // is_logged_in();
-	}
-	public function index()
-	{
-		$data['judul'] = "Barang";
+    }
+    public function index()
+    {
+        $data['judul'] = "Barang";
 
 
-		$data['barang'] = $this->Barang_model->tampil_data();
+        $data['barang'] = $this->Barang_model->tampil_data();
 
-		$this->load->view('templates/header', $data);
-		$this->load->view('admin/barang/index', $data);
-		$this->load->view('templates/footer');
-	}
+        $this->load->view('templates/header', $data);
+        $this->load->view('admin/barang/index', $data);
+        $this->load->view('templates/footer');
+    }
 
-	public function all_barang_get()
-	{
-	    
-		$barang = $this->Barang_model->tampil_data();
-		if ($barang) {
-                $this->response([
-                    'status' => true,
-                    'data' => $barang
-                ], RESTController::HTTP_OK);
-            } else {
-                $this->response([
-                    'status' => false,
-                    'message' => 'Data tidak ditemukan'
-                ], RESTController::HTTP_OK);
-            }
-	}
-	
-		public function barang_get()
-	{
-	    
-		$barang = $this->Barang_model->tampil_data_all();
-		if ($barang) {
-                $this->response([
-                    'status' => true,
-                    'data' => $barang
-                ], RESTController::HTTP_OK);
-            } else {
-                $this->response([
-                    'status' => false,
-                    'message' => 'Data tidak ditemukan'
-                ], RESTController::HTTP_OK);
-            }
-	}
-	
-	public function all_barang_ark_get()
-	{
-	    
-		$barang = $this->Barang_model->tampil_data_ark();
-		if ($barang) {
-                $this->response([
-                    'status' => true,
-                    'data' => $barang
-                ], RESTController::HTTP_OK);
-            } else {
-                $this->response([
-                    'status' => false,
-                    'message' => 'Data tidak ditemukan'
-                ], RESTController::HTTP_OK);
-            }
-	}
-	
-	public function barang_id_get($id)
-	{
-	    
-		$barang = $this->Barang_model->get_id($id);
-		if ($barang) {
-                $this->response([
-                    'status' => true,
-                    'data' => $barang
-                ], RESTController::HTTP_OK);
-            } else {
-                $this->response([
-                    'status' => false,
-                    'message' => 'Data tidak ditemukan'
-                ], RESTController::HTTP_OK);
-            }
-	}
+    public function all_barang_get()
+    {
 
-	public function insert_barang_post() {
+        // var_dump($this->decoded_token);
+        // die;
+
+        $barang = $this->Barang_model->tampil_data($this->decoded_token['id_satker']);
+        if ($barang) {
+            $this->response([
+                'status' => true,
+                'data' => $barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function barang_get()
+    {
+
+        $barang = $this->Barang_model->tampil_data_all();
+        if ($barang) {
+            $this->response([
+                'status' => true,
+                'data' => $barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function all_barang_ark_get()
+    {
+
+        $barang = $this->Barang_model->tampil_data_ark($this->decoded_token['id_satker']);
+        if ($barang) {
+            $this->response([
+                'status' => true,
+                'data' => $barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function barang_id_get($id)
+    {
+
+        $barang = $this->Barang_model->get_id($id);
+        if ($barang) {
+            $this->response([
+                'status' => true,
+                'data' => $barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function insert_barang_post()
+    {
         // Validasi input
         $this->form_validation->set_rules('kd_barang', 'Kode Barang', 'trim|required');
         $this->form_validation->set_rules('nama_barang', 'Nama Barang', 'trim|required');
@@ -184,13 +188,14 @@ class Barang_api extends ApiController
                 $this->response([
                     'status' => FALSE,
                     'message' => 'Data gagal ditambahkan ke barang: ' . $error['message']
-                ], HTTP_OK);
+                ], RestController::HTTP_OK);
             }
         }
     }
 
-	
-	public function hapus_barang_delete($id) {
+
+    public function hapus_barang_delete($id)
+    {
         // Periksa apakah ID valid
         if (empty($id) || !is_numeric($id)) {
             $this->response([
@@ -214,8 +219,9 @@ class Barang_api extends ApiController
         }
     }
 
-	
-	public function ubah_put($id = '') {
+
+    public function ubah_put($id = '')
+    {
         // Validasi apakah ID disediakan
         if (empty($id) || !is_numeric($id)) {
             $this->response([
@@ -278,10 +284,11 @@ class Barang_api extends ApiController
                 'message' => 'Gagal mengupdate data'
             ], 500);
         }
-	}
+    }
 
 
-	public function update_harga_pengajuan_post() {
+    public function update_harga_pengajuan_post()
+    {
         // Ambil data harga_pengajuan dari POST
         $harga_pengajuan = $this->input->post('harga_pengajuan');
 
@@ -323,25 +330,25 @@ class Barang_api extends ApiController
             'text/tsv',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         );
-    
+
         if (isset($_FILES['file']['name']) && in_array($_FILES['file']['type'], $file_mimes)) {
             $inputFileName = $_FILES['file']['tmp_name'];
-    
+
             try {
                 $spreadsheet = IOFactory::load($inputFileName);
             } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
                 $this->response([
                     'status' => false,
                     'message' => 'Error loading file: ' . $e->getMessage()
-                ], RESTController::HTTP_INTERNAL_SERVER_ERROR);
+                ], RESTController::HTTP_INTERNAL_ERROR);
                 return;
             }
-    
+
             $sheetData = $spreadsheet->getActiveSheet()->toArray();
-    
+
             // Extract Kd Barang column
             $kd_barang = array_column($sheetData, 0);
-    
+
             // Check for duplicate values in the uploaded file
             if (count($kd_barang) !== count(array_unique($kd_barang))) {
                 $this->response([
@@ -350,10 +357,10 @@ class Barang_api extends ApiController
                 ], RESTController::HTTP_BAD_REQUEST);
                 return;
             }
-    
+
             foreach ($sheetData as $key => $row) {
                 if ($key == 0) continue; // Skip the header row
-    
+
                 // Check if kd_barang already exists in the database
                 if ($this->Barang_model->exists_kd_barang($row[0])) {
                     $this->response([
@@ -362,7 +369,7 @@ class Barang_api extends ApiController
                     ], RESTController::HTTP_CONFLICT);
                     return;
                 }
-    
+
                 $data_barang = array(
                     'kd_barang' => $row[0],
                     'nama_barang' => $row[1],
@@ -372,22 +379,22 @@ class Barang_api extends ApiController
                     'stok_dasar' => $row[5],
                     'harga_satuan' => $row[6],
                 );
-    
+
                 // Insert data into barang table
                 $this->Barang_model->insert_barang($data_barang);
-    
+
                 // Get the inserted id_barang
                 $id_barang = $this->db->insert_id();
-    
+
                 // Insert data into harga_pengajuan table
                 $data_harga_pengajuan = array(
                     'id_barang' => $id_barang,
                     'harga_pengajuan' => 0
                 );
-    
+
                 $this->Barang_model->insert_harga_pengajuan($data_harga_pengajuan);
             }
-    
+
             $this->response([
                 'status' => true,
                 'message' => 'Data has been successfully imported.'
@@ -398,10 +405,10 @@ class Barang_api extends ApiController
                 'message' => 'Invalid file format.'
             ], RESTController::HTTP_OK);
         }
-        
     }
 
-    public function subkategori_get() {
+    public function subkategori_get()
+    {
         $subkategori = $this->Barang_model->fetch_subkategori();
         if ($subkategori) {
             $this->response([
@@ -415,5 +422,4 @@ class Barang_api extends ApiController
             ], RESTController::HTTP_OK);
         }
     }
-
 }

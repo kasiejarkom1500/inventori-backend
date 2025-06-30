@@ -177,6 +177,7 @@ class Barang_masuk_api extends ApiController
                     'jumlah' => $barang['jumlah'],
                     'harga' => $barang['harga'],
                     'sisa_stok' => $barang['jumlah'],
+                    'catatan' => $barang['catatan'] ?? null,
                     ];
                     
                 $result = $this->Barang_masuk_model->simpan($data);

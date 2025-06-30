@@ -22,7 +22,7 @@ class Permintaan_barang_model extends CI_Model
 
 
 
-    public function karken_data($tgl_mulai, $tgl_selesai)
+    public function karken_data($tgl_mulai, $tgl_selesai, $kabupaten_id = null)
     {
 
 
@@ -54,7 +54,7 @@ class Permintaan_barang_model extends CI_Model
         ON
             sumber.id_sumber = beli.id_sumber
         WHERE
-            masuk.tgl_masuk BETWEEN ? AND ?  -- Parameter binding untuk tanggal masuk
+            masuk.tgl_masuk BETWEEN ? AND ? AND barang.kabupaten_id = ?  -- Parameter binding untuk tanggal masuk
         GROUP BY 
             masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori
             
@@ -83,23 +83,23 @@ class Permintaan_barang_model extends CI_Model
         ON
             ruangan.id_ruangan = keluar.id_ruangan
         WHERE
-            keluar.tanggal BETWEEN ? AND ?  -- Parameter binding untuk tanggal keluar
+            keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved'  -- Parameter binding untuk tanggal keluar
         GROUP BY 
             keluar.id_barang, keluar.tanggal, faktur,barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori";
 
-        $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $tgl_mulai, $tgl_selesai));
+        $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id));
 
         return $query->result_array();
     }
 
-    public function summary_karken($tgl_mulai, $tgl_selesai)
+    public function summary_karken($tgl_mulai, $tgl_selesai, $kabupaten_id)
     {
 
         //  var_dump($this->db->escape($tgl_mulai));
         //  die;
 
-        $sql = 
-        "
+        $sql =
+            "
             SELECT combined_data.id_barang, nama_barang, 
                 SUM(total_masuk) AS total_masuk, 
                 SUM(total_keluar) AS total_keluar, 
@@ -113,9 +113,10 @@ class Permintaan_barang_model extends CI_Model
                 
                 SELECT id_barang, 0 AS total_masuk, jumlah AS total_keluar 
                 FROM permintaan 
-                WHERE tanggal BETWEEN " . $this->db->escape($tgl_mulai) . " AND " . $this->db->escape($tgl_selesai) . "
+                WHERE tanggal BETWEEN " . $this->db->escape($tgl_mulai) . " AND " . $this->db->escape($tgl_selesai) . "AND status = 'Approved'
             ) AS combined_data
             JOIN barang ON barang.id_barang = combined_data.id_barang
+            WHERE barang.kabupaten_id = " . $kabupaten_id . "
             GROUP BY combined_data.id_barang, nama_barang, barang.stok, barang.kategori
             ORDER BY combined_data.id_barang ASC";
 
@@ -135,11 +136,15 @@ class Permintaan_barang_model extends CI_Model
         return $query->result_array();
     }
 
-    public function get_grouped_by_date()
+    public function get_grouped_by_date($kabupaten_id = null)
     {
+
         $this->db->select('tanggal, permintaan.id_user,permintaan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
         $this->db->from('permintaan');
         $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
+        if (!$kabupaten_id == null) {
+            $this->db->where('admin_ruangan.id_satker', $kabupaten_id);
+        }
         $this->db->group_by(array('tanggal', 'permintaan.id_user', 'permintaan.id_ruangan', 'admin_ruangan.ruangan'));
         $query = $this->db->get();
         return $query->result_array();
@@ -158,7 +163,7 @@ class Permintaan_barang_model extends CI_Model
 
     public function get_by_date($id_ruangan, $tanggal)
     {
-        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, nama_barang, kategori, satuan, stok, jumlah, status');
+        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
         $this->db->from('permintaan');
         $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
         $this->db->where('id_ruangan', $id_ruangan);
@@ -238,15 +243,11 @@ class Permintaan_barang_model extends CI_Model
     {
         //var_dump($data);
         $this->db->insert('permintaan', $data);
-
-        $error = $this->db->error();
-        if (!empty($error['code'])) {
-            // Display error message as JSON
-            echo json_encode([
-                'status' => 'error',
-                'message' => $error['message']
-            ]);
+        if ($this->db->affected_rows() == 0) {
+            return false; // Jika tidak ada baris yang terpengaruh, berarti insert gagal
         }
+        // Jika insert berhasil, kita bisa mengembalikan ID dari permintaan yang baru saja dimasukkan
+        return $this->db->insert_id(); // Mengembalikan ID dari permintaan yang baru saja dimasukkan
     }
 
     public function get_user_requests($user_id)
@@ -260,12 +261,13 @@ class Permintaan_barang_model extends CI_Model
         $this->db->insert('permintaan', $data);
     }
 
-    public function update_status($id_permintaan, $status, $jumlah)
+    public function update_status($id_permintaan, $data)
     {
-        $data = array(
-            'status' => $status,
-            'jumlah_approved' => $jumlah
-        );
+        // $data = array(
+        //     'status' => $status,
+        //     'jumlah_approved' => $jumlah,
+        //     'is_buat_pengajuan' => $is_buat_pengajuan
+        // );
         $this->db->where('id_permintaan', $id_permintaan);
         $this->db->update('permintaan', $data);
     }
@@ -323,11 +325,26 @@ class Permintaan_barang_model extends CI_Model
         $this->db->select('*');
         $this->db->from('barang_keluar_detail');
         $this->db->where('id_permintaan', $id_permintaan);
+        $this->db->where('deleted_at IS NULL'); // Pastikan hanya mengambil data yang belum dihapus
         $query = $this->db->get();
         if ($query->num_rows() > 0) {
             return $query->result_array();
         } else {
             return []; // Mengembalikan array kosong jika tidak ada data
         }
+    }
+
+    //function untuk mengupdate kolom barang_keluar_detail deleted_at dengan current timestamp
+    public function soft_delete_keluar($id_bk_detail)
+    {
+        $this->db->set('deleted_at', 'NOW()', FALSE);
+        $this->db->where('id_bk_detail', $id_bk_detail);
+        return $this->db->update('barang_keluar_detail');
+    }
+
+    public function hapus_permintaan($id_permintaan)
+    {
+        $this->db->where('id_permintaan', $id_permintaan);
+        return $this->db->delete('permintaan');
     }
 }
