@@ -152,12 +152,15 @@ class Permintaan_barang_model extends CI_Model
         return $query->result_array();
     }
 
-    public function get_grouped_filter_by_date($bulanTahun)
+    public function get_grouped_filter_by_date($bulanTahun, $kabupaten_id = null)
     { // Parameter $bulanTahun diharapkan dalam format YYYY-MM
         $this->db->select('permintaan.tanggal, permintaan.id_user, permintaan.id_ruangan, admin_ruangan.ruangan, COUNT(*) as jumlah_jenis_barang, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
         $this->db->from('permintaan');
         $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
         $this->db->where("DATE_FORMAT(permintaan.tanggal, '%Y-%m') =", $bulanTahun);
+        if (!$kabupaten_id == null) {
+            $this->db->where('admin_ruangan.id_satker', $kabupaten_id);
+        }
         $this->db->group_by(array('permintaan.tanggal', 'permintaan.id_user', 'permintaan.id_ruangan', 'admin_ruangan.ruangan'));
         $query = $this->db->get();
         return $query->result_array();
@@ -217,12 +220,13 @@ class Permintaan_barang_model extends CI_Model
     //Mendapatakan nama barang dan jumlahnya di permintaan group by id_barang dan nama barang sort by jumlah descending
     public function get_barang_terbanyak($tahun)
     {
-        $this->db->select('barang.id_barang, barang.nama_barang, SUM(permintaan.jumlah) as total_jumlah');
+        $this->db->select('barang.kd_subkategori, sub_kategori.sub_kategori,barang.id_barang,  barang.nama_barang, SUM(permintaan.jumlah) as total_jumlah');
         $this->db->from('permintaan');
         $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
+        $this->db->join('sub_kategori', 'sub_kategori.kd_subkategori = barang.kd_subkategori');
         $this->db->where('permintaan.status', 'Approved');
         $this->db->where('YEAR(tanggal)', $tahun);
-        $this->db->group_by('barang.id_barang, barang.nama_barang');
+        $this->db->group_by('barang.kd_subkategori, sub_kategori.sub_kategori,barang.id_barang,  barang.nama_barang');
         $this->db->order_by('total_jumlah', 'DESC');
         $query = $this->db->get();
         return $query->result_array();

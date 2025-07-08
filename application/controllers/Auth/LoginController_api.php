@@ -227,7 +227,8 @@ class LoginController_api extends RestController
 
         $role_map = [
             0 => 'admin',
-            1 => 'admin_pengajuan',
+            1 => 'admin_gudang',
+            2 => 'admin_pengadaan',
             3 => 'admin_pembelian',
             4 => 'user',
             5 => 'viewer'

@@ -37,11 +37,53 @@ class Barang_masuk_model extends CI_Model
         $this->db->group_by(['bulan', 'tahun']);
         $this->db->order_by('tahun', 'ASC');
         $this->db->order_by('bulan', 'ASC');
-
         $query = $this->db->get();
         return $query->result_array();
     }
 
+    public function total_pembelian_bulan($bulanTahun, $kabupaten_id = null)
+    {
+        $this->db->select('COUNT(*) as total_pembelian');
+        $this->db->from('pembelian');
+        $this->db->where("DATE_FORMAT(pembelian.created_at, '%Y-%m') =", $bulanTahun);
+
+        if ($kabupaten_id !== null) {
+            $this->db->where('pembelian.id_satker', $kabupaten_id);
+        }
+
+        $query = $this->db->get();
+
+        // $check = $this->db->last_query();
+        // $error = $this->db->error();
+        // echo $error['message'];
+        // die;
+        return $query->row_array();
+    }
+    
+    public function get_list_barang_masuk($bulanTahun = null, $kabupaten_id = null)
+    {
+        $this->db->select('pembelian.tgl_masuk, COUNT(barang_masuk.jumlah) as jumlah_jenis, SUM(barang_masuk.jumlah) as total_barang, SUM(barang_masuk.harga*barang_masuk.jumlah) as total_harga');
+        $this->db->from('barang_masuk');
+        $this->db->join('barang', 'barang_masuk.id_barang = barang.id_barang');
+        $this->db->join('pembelian', 'barang_masuk.id_pembelian = pembelian.id_pembelian');
+        $this->db->where('pembelian.id_satker', $kabupaten_id);
+        $this->db->group_by('pembelian.tgl_masuk');
+
+        if ($bulanTahun) {
+            $this->db->where("DATE_FORMAT(pembelian.tgl_masuk, '%Y-%m') =", $bulanTahun);
+        }
+
+
+        $query = $this->db->get();
+
+
+        //         $check = $this->db->last_query();
+        // $error = $this->db->error();
+        // echo $check;
+        // echo $error['message'];
+        // die;
+        return $query->result_array();
+    }
 
     public function ubah_api($id, $data)
     {

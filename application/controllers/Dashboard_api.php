@@ -4,9 +4,6 @@ require_once FCPATH . 'vendor/autoload.php';
 require_once APPPATH . 'core/ApiController.php';
 
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use chriskacerguis\RestServer\RestController;
 
 class Dashboard_api extends ApiController
@@ -16,13 +13,16 @@ class Dashboard_api extends ApiController
 	public $form_validation;
 	public $db;
 	public $session;
+    public $satker;
 
 
-	public function __construct()
-	{
-		parent::__construct();
-		
-		header('Access-Control-Allow-Origin: *');
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->satker = $this->decoded_token['id_satker'];
+        
+        header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
         
@@ -36,13 +36,14 @@ class Dashboard_api extends ApiController
 
 
 
-		$this->load->model('Barang_model');
-		$this->load->model('Permintaan_barang_model');
-		$this->load->helper('form');
-		$this->load->helper('url');
+        $this->load->model('Barang_model');
+        $this->load->model('Permintaan_barang_model');
+        $this->load->model('Barang_masuk_model');
+        $this->load->helper('form');
+        $this->load->helper('url');
         $this->load->config('rest');
         // is_logged_in();
-	}
+    }
 
     public function total_barang_get($kategori = null)
     {
@@ -54,7 +55,7 @@ class Dashboard_api extends ApiController
             return;
         }
 
-        $barang = $this->Barang_model->get_sum($kategori);
+        $barang = $this->Barang_model->get_sum($kategori, $this->decoded_token['id_satker']);
         // Ensure $barang is treated as a number, it might be a string from DB
         $total_item = $barang !== null ? (int)$barang : 0;
 
@@ -82,7 +83,7 @@ class Dashboard_api extends ApiController
             return;
         }
 
-        $barang = $this->Barang_model->get_sum_stok($kategori);
+        $barang = $this->Barang_model->get_sum_stok($kategori, $this->decoded_token['id_satker']);
         // Ensure $barang is treated as a number, it might be a string from DB
         $total_stok_tersedia = $barang !== null ? (int)$barang : 0;
 		if ($barang) {
@@ -117,7 +118,7 @@ class Dashboard_api extends ApiController
             return;
         }
 
-		$permintaan_barang = $this->Permintaan_barang_model->get_grouped_filter_by_date($bulanTahun);
+		$permintaan_barang = $this->Permintaan_barang_model->get_grouped_filter_by_date($bulanTahun, $this->decoded_token['id_satker']);
 		
 		if ($permintaan_barang) {
                 $this->response([
@@ -254,6 +255,74 @@ class Dashboard_api extends ApiController
             $this->response([
                 'status' => true,
                 'data' => $barang_stok_minimal
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan',
+                'data' => []
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function pembelian_bulan_get($bulanTahun = null)
+    {
+        if ($bulanTahun === null) {
+            $this->response([
+                'status' => false,
+                'message' => 'Parameter bulan dan tahun (YYYY-MM) diperlukan.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+        // Validasi format YYYY-MM
+        if (!preg_match('/^\d{4}-\d{2}$/', $bulanTahun) || !DateTime::createFromFormat('Y-m', $bulanTahun)) {
+            $this->response([
+                'status' => false,
+                'message' => 'Format parameter tidak valid. Gunakan YYYY-MM.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+
+        $pembelian_bulan = $this->Barang_masuk_model->total_pembelian_bulan($bulanTahun, $this->decoded_token['id_satker']);
+        
+        if ($pembelian_bulan) {
+            $this->response([
+                'status' => true,
+                'data' => $pembelian_bulan
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan',
+                'data' => []
+            ], RESTController::HTTP_OK);
+        }
+    }
+
+    public function pembelian_detail_get($bulanTahun = null)
+    {
+        if ($bulanTahun === null) {
+            $this->response([
+                'status' => false,
+                'message' => 'Parameter bulan dan tahun (YYYY-MM) diperlukan.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+        // Validasi format YYYY-MM
+        if (!preg_match('/^\d{4}-\d{2}$/', $bulanTahun) || !DateTime::createFromFormat('Y-m', $bulanTahun)) {
+            $this->response([
+                'status' => false,
+                'message' => 'Format parameter tidak valid. Gunakan YYYY-MM.'
+            ], RESTController::HTTP_BAD_REQUEST);
+            return;
+        }
+
+        $pembelian_detail = $this->Barang_masuk_model->get_list_barang_masuk($bulanTahun, $this->decoded_token['id_satker']);
+        
+        if ($pembelian_detail) {
+            $this->response([
+                'status' => true,
+                'data' => $pembelian_detail
             ], RESTController::HTTP_OK);
         } else {
             $this->response([

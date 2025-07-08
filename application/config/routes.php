@@ -146,3 +146,9 @@ $route['api/barang_stok_minimal'] = 'Dashboard_api/barang_stok_minimal';
 //route ambil subkategori
 $route['api/get_subkategori'] = 'Barang_api/subkategori';
 
+//routes pembelian bulan
+$route['api/pembelian_bulan/(:any)'] = 'Dashboard_api/pembelian_bulan/$1';
+
+//routes pembelian detail
+$route['api/pembelian_detail/(:any)'] = 'Dashboard_api/pembelian_detail/$1';
+

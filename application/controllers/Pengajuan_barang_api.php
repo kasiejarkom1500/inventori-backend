@@ -119,13 +119,17 @@ class Pengajuan_barang_api extends ApiController
             if ($status == 'Approved' && $barang['temp'] == 1) {
                 //Ambil jumlah permintaan dan id_barang
                 
-                $last_kd_barang =  $this->Barang_model->get_max_kode();
+                $last_kd_barang =  $this->Barang_model->get_next_kode_barang($item['kd_subkategori']);
+
+                // var_dump($last_kd_barang);
+                // die;
                 
-                $kd_barang = (($last_kd_barang !== null) ? intval($last_kd_barang) : null) + 1;
+                $kd_barang = $last_kd_barang;
                 $barang['kd_barang'] = $kd_barang;
                 $barang['temp'] = 0;
                 $barang['harga_satuan'] = $item['harga_satuan'];
                 $barang['kategori'] = $item['kategori'];
+                $barang['kd_subkategori'] = $item['kd_subkategori'];
                 
                 $this->Barang_model->ubah_api($barang['id_barang'],$barang);
                 
@@ -167,6 +171,8 @@ class Pengajuan_barang_api extends ApiController
         // Loop melalui setiap item dalam data
         foreach ($data as $item) {
             // Validasi setiap item (id_permintaan, status, jumlah harus ada)
+            // var_dump($data);
+            // die;
             if (!isset($item['jumlah'], $item['id_ruangan'], $item['id_user'])) {
                 $this->response([
                     'status' => 'error',
@@ -187,11 +193,28 @@ class Pengajuan_barang_api extends ApiController
                         'satuan' => $item['satuan'],
                         'stok' => 0,
                         'temp' => 1,
+                        'id_satker' => $this->decoded_token['id_satker'],
                     ];
+
+                $this->db->trans_begin();
                 
                 $this->Barang_model->insert_barang($data);
+
+                if ($this->db->trans_status() === FALSE) {
+                    $db_error = $this->db->error();
+                    $this->db->trans_rollback();
+                    $this->response([
+                        'status' => 'Gagal',
+                        'message' => 'Gagal simpan barang '.$item['nama_barang'],
+                        // 'db_error' => $db_error // Tambahkan ini untuk debug
+                    ], 200);
+                    return;
+                }
+
+
                 
                 $last_id = $this->db->insert_id();
+
                 $item['id_barang'] = $last_id;
                 
                 // var_dump($last_id);
@@ -206,6 +229,7 @@ class Pengajuan_barang_api extends ApiController
     			$data_pengajuan = [
     			        'id_barang' => $item['id_barang'],
     			        'id_user' => $item['id_user'],
+                        'id_satker' => $this->decoded_token['id_satker'],
     			        'id_ruangan' => $item['id_ruangan'],
     			        'tanggal' => $tanggal,
     			        'jumlah' => $item['jumlah'],
@@ -214,6 +238,19 @@ class Pengajuan_barang_api extends ApiController
     			    
     			    ];
     			$this->Pengajuan_barang_model->insert($data_pengajuan);
+
+                if ($this->db->trans_status() === FALSE) {
+                    $db_error = $this->db->error();
+                    $this->db->trans_rollback();
+                    $this->response([
+                        'status' => 'Gagal',
+                        'message' => 'Gagal menambahkan pengajuan barang '.$item['nama_barang'],
+                        // 'db_error' => $db_error // Tambahkan ini untuk debug
+                    ], 200);
+                    return;
+                }
+
+                $this->db->trans_commit();
 			    
 			} else {
 			    
@@ -228,6 +265,7 @@ class Pengajuan_barang_api extends ApiController
 			$data_pengajuan = [
 			        'id_barang' => $item['id_barang'],
 			        'id_user' => $item['id_user'],
+                    'id_satker' => $this->decoded_token['id_satker'],
 			        'id_ruangan' => $item['id_ruangan'],
 			        'tanggal' => $tanggal,
 			        'jumlah' => $item['jumlah'],

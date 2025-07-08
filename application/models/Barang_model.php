@@ -133,7 +133,7 @@ class Barang_model extends CI_Model
 
 	public function insert_barang($data)
 	{
-		$this->db->insert('barang', $data);
+		return $this->db->insert('barang', $data);
 	}
 	public function simpan()
 	{
@@ -334,6 +334,34 @@ class Barang_model extends CI_Model
         $result = $query->row();
         return $max_value = $result->kd_barang;
 	}
+
+	public function get_next_kode_barang($kd_subkategori)
+{
+    // Ambil kd_barang terbesar yang sesuai dengan subkategori
+    $this->db->select('kd_barang');
+    $this->db->like('kd_barang', $kd_subkategori . '.', 'after'); // kd_barang LIKE 'kd_subkategori.%'
+    $this->db->order_by('kd_barang', 'DESC');
+    $this->db->limit(1);
+    $query = $this->db->get('barang');
+
+    if ($query->num_rows() > 0) {
+        $last_kode = $query->row()->kd_barang;
+        
+        // Ambil digit terakhir setelah titik
+        $parts = explode('.', $last_kode);
+        $last_number = intval(end($parts));
+
+        // Tambahkan 1
+        $next_number = $last_number + 1;
+    } else {
+        // Jika belum ada kd_barang untuk subkategori tersebut
+        $next_number = 1;
+    }
+
+    // Gabungkan jadi format baru
+    return $kd_subkategori . '.' . $next_number;
+}
+
     
 	public function update_harga_pengajuan($harga_pengajuan_input)
 	{
