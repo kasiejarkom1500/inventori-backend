@@ -166,5 +166,8 @@ $route['api/ro/(:any)'] = 'Pok_api/ro/$1';
 //routes komponen
 $route['api/komponen/(:any)'] = 'Pok_api/komponen/$1';
 //routes gabungan pok
-$route['api/gabungan_pok'] = 'Pok_api/gabungan_pok';   
+$route['api/gabungan_pok'] = 'Pok_api/gabungan_pok';
+
+//route approve transaksi permintaan
+$route['api/approve_transaksi/(:num)/(:num)'] = 'Permintaan_barang_api/approve_transaksi/$1/$2';
 

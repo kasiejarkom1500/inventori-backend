@@ -230,411 +230,344 @@ class Permintaan_barang_api extends ApiController
         ], 200);
     }
 
+
+    private function cek_butuh_transaksi($data)
+    {
+        foreach ($data as $item) {
+            if ($item['status'] === 'Approved') {
+                $permintaan = $this->Permintaan_barang_model->get_permintaan($item['id_permintaan']);
+                if (in_array($permintaan['status'], ['Pending', 'Rejected', 'Pengadaan']) && !empty($item['is_buat_pengajuan'])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private function buat_transaksi_permintaan($item)
+    {
+        $permintaan = $this->Permintaan_barang_model->get_permintaan($item['id_permintaan']);
+        return $this->Permintaan_barang_model->insert_transaksi_permintaan([
+            'id_ruangan' => $permintaan['id_ruangan'],
+            'id_user' => $this->decoded_token['id_user']
+        ]);
+    }
+
+    private function response_error($message)
+    {
+        $this->response(['status' => 'Gagal', 'message' => $message], 200);
+    }
+
+
+    private function handle_approved($item, $permintaan, $id_transaksi_permintaan)
+    {
+        $id_user = $this->decoded_token['id_user'];
+        $id_permintaan = $item['id_permintaan'];
+        $jumlah_approved = $item['jumlah_approved'];
+
+        $this->db->trans_begin();
+
+        $permintaan = $this->Permintaan_barang_model->get_permintaan($id_permintaan); // refresh
+
+        $jumlah_permintaan = $permintaan['jumlah'];
+        $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
+        $barang = $this->Barang_model->get_id($id_barang);
+
+        // Jika barang baru (temp)
+        if ($barang['temp'] == 1) {
+            $barang['kd_barang'] = $this->Barang_model->get_next_kode_barang($item['kd_subkategori']);
+            $barang['temp'] = 0;
+            $barang['harga_satuan'] = $item['harga_satuan'];
+            $barang['kategori'] = 'ATK';
+            $barang['kd_subkategori'] = $item['kd_subkategori'];
+
+            $this->Barang_model->ubah_api($barang['id_barang'], $barang);
+        }
+
+        // Validasi stok
+        if ($barang['stok'] < $jumlah_approved) {
+            $this->db->trans_rollback();
+            return $this->response_error("Jumlah Approved {$barang['nama_barang']} melebihi stok yang tersedia.");
+        }
+
+        if ($jumlah_approved > $jumlah_permintaan) {
+            $this->db->trans_rollback();
+            return $this->response_error("Jumlah Approved melebihi jumlah permintaan.");
+        }
+
+        // Update status permintaan
+        $update_data = [
+            'jumlah_approved' => $jumlah_approved,
+            'status' => 'Approved',
+            'is_buat_pengajuan' => $item['is_buat_pengajuan'],
+        ];
+
+        // Jika buat pengajuan baru
+        if (!empty($item['is_buat_pengajuan'])) {
+            $jumlah_belum_dipenuhi = $permintaan['jumlah'] - $jumlah_approved;
+
+            $pengajuan_data = [
+                'id_barang' => $permintaan['id_barang'],
+                'id_user' => $id_user,
+                'id_ruangan' => $permintaan['id_ruangan'],
+                'tanggal' => date('Y-m-d'),
+                'jumlah' => $jumlah_belum_dipenuhi,
+                'harga_pengajuan' => $barang['harga_satuan'],
+                'kd_program' => $permintaan['kd_program'],
+                'kd_kegiatan' => $permintaan['kd_kegiatan'],
+                'kd_kro' => $permintaan['kd_kro'],
+                'kd_ro' => $permintaan['kd_ro'],
+                'kd_komponen' => $permintaan['kd_komponen'],
+                'status' => 'Pending'
+            ];
+
+            $id_pengajuan = $this->Pengajuan_barang_model->insert($pengajuan_data);
+
+            $id_permintaan_baru = $this->Permintaan_barang_model->insert([
+                'id_transaksi' => $id_transaksi_permintaan,
+                'id_barang' => $permintaan['id_barang'],
+                'id_user' => $id_user,
+                'id_ruangan' => $permintaan['id_ruangan'],
+                'tanggal' => date('Y-m-d'),
+                'jumlah' => $jumlah_belum_dipenuhi,
+                'status' => 'Pengadaan',
+                'jumlah_approved' => $jumlah_belum_dipenuhi
+            ]);
+
+            if (!$id_pengajuan || !$id_permintaan_baru) {
+                $this->db->trans_rollback();
+                return $this->response_error("Gagal membuat pengajuan atau permintaan lanjutan.");
+            }
+
+            $update_data['id_pengajuan_lanjutan'] = $id_pengajuan;
+            $update_data['id_permintaan_lanjutan'] = $id_permintaan_baru;
+        }
+
+        // Simpan status
+        $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+
+        // Kurangi stok dari barang masuk (FIFO)
+        $stok_masuk = $this->Barang_masuk_model->get_stok_masuk_fifo($id_barang);
+        $sisa = $jumlah_approved;
+
+        foreach ($stok_masuk as $stok) {
+            if ($sisa <= 0) break;
+
+            $id_masuk = $stok['id_barang_masuk'];
+            $tersedia = $stok['sisa_stok'];
+
+            if ($tersedia == 0) continue;
+
+            $ambil = min($sisa, $tersedia);
+            $sisa -= $ambil;
+
+            if (!$this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $ambil)) {
+                $this->db->trans_rollback();
+                return $this->response_error("Gagal mengurangi stok barang masuk.");
+            }
+
+            if (!$this->Permintaan_barang_model->catat_keluar_fifo([
+                'id_permintaan' => $id_permintaan,
+                'id_barang_masuk' => $id_masuk,
+                'jumlah_keluar' => $ambil,
+                'harga_satuan' => $stok['harga']
+            ])) {
+                $this->db->trans_rollback();
+                return $this->response_error("Gagal mencatat transaksi keluar FIFO.");
+            }
+        }
+
+        // Kurangi stok akhir dan catat
+        $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
+        $updated_barang = $this->Barang_model->get_id($id_barang);
+
+        if ($this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok'])) {
+            $this->db->trans_commit();
+        } else {
+            $this->db->trans_rollback();
+            return $this->response_error("Gagal menyimpan catatan stok akhir.");
+        }
+    }
+
+    private function handle_rejected_from_approved($item, $permintaan)
+    {
+        $this->db->trans_begin();
+
+        $update_data = [
+            'jumlah_approved' => 0,
+            'status' => 'Rejected',
+            'is_buat_pengajuan' => false,
+        ];
+
+        // Jika ada pengajuan/permintaan lanjutan sebelumnya → hapus
+        if (!empty($permintaan['is_buat_pengajuan'])) {
+            $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($permintaan['id_pengajuan_lanjutan']);
+            $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($permintaan['id_permintaan_lanjutan']);
+
+            if (!$hapus_pengajuan || !$hapus_permintaan) {
+                $this->db->trans_rollback();
+                return $this->response_error("Gagal rollback pengajuan dan permintaan lanjutan.");
+            }
+
+            $update_data['id_pengajuan_lanjutan'] = null;
+            $update_data['id_permintaan_lanjutan'] = null;
+        }
+
+        // Tambahkan kembali stok barang
+        $id_barang = $permintaan['id_barang'];
+        $jumlah_approved = $permintaan['jumlah_approved'];
+
+        $this->Barang_model->tambah_stok_barang($id_barang, $jumlah_approved);
+
+        // Ambil log FIFO yang pernah dicatat
+        $log_fifo = $this->Permintaan_barang_model->get_log_keluar_by_permintaan($item['id_permintaan']);
+
+        foreach ($log_fifo as $keluar) {
+            $id_masuk = $keluar['id_barang_masuk'];
+            $jumlah_dikembalikan = $keluar['jumlah_keluar'];
+            $id_bk_detail = $keluar['id_bk_detail'];
+
+            // Tambahkan kembali stok masuk
+            $this->Barang_masuk_model->tambah_barang_masuk($id_masuk, $jumlah_dikembalikan);
+
+            // Soft delete log keluar
+            $this->Permintaan_barang_model->soft_delete_keluar($id_bk_detail);
+        }
+
+        // Update status permintaan
+        $this->Permintaan_barang_model->update_status($item['id_permintaan'], $update_data);
+
+        // Update stok catatan akhir
+        $updated_barang = $this->Barang_model->get_id($id_barang);
+        $stok_saved = $this->Permintaan_barang_model->simpan_current_stok($item['id_permintaan'], $updated_barang['stok']);
+
+        if (!$stok_saved) {
+            $this->db->trans_rollback();
+            return $this->response_error("Gagal update rollback stok keluar.");
+        }
+
+        $this->db->trans_commit();
+    }
+
+    private function handle_pending_from_approved($item, $permintaan)
+    {
+        $this->db->trans_begin();
+
+        $update_data = [
+            'jumlah_approved' => $permintaan['jumlah_approved'],
+            'status' => 'Pending',
+            'is_buat_pengajuan' => false,
+        ];
+
+        // Jika sebelumnya buat pengajuan, hapus pengajuan dan permintaan lanjutan
+        if (!empty($permintaan['is_buat_pengajuan'])) {
+            $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($permintaan['id_pengajuan_lanjutan']);
+            $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($permintaan['id_permintaan_lanjutan']);
+
+            if (!$hapus_pengajuan || !$hapus_permintaan) {
+                $this->db->trans_rollback();
+                return $this->response_error("Gagal rollback pengajuan dan permintaan.");
+            }
+
+            $update_data['id_pengajuan_lanjutan'] = null;
+            $update_data['id_permintaan_lanjutan'] = null;
+        }
+
+        // Kembalikan stok utama
+        $id_barang = $permintaan['id_barang'];
+        $jumlah_approved = $permintaan['jumlah_approved'];
+
+        $this->Barang_model->tambah_stok_barang($id_barang, $jumlah_approved);
+
+        // Ambil log FIFO yang harus dikembalikan
+        $log_keluar = $this->Permintaan_barang_model->get_log_keluar_by_permintaan($item['id_permintaan']);
+
+        foreach ($log_keluar as $keluar) {
+            $id_masuk = $keluar['id_barang_masuk'];
+            $jumlah_dikembalikan = $keluar['jumlah_keluar'];
+            $id_bk_detail = $keluar['id_bk_detail'];
+
+            $this->Barang_masuk_model->tambah_barang_masuk($id_masuk, $jumlah_dikembalikan);
+            $this->Permintaan_barang_model->soft_delete_keluar($id_bk_detail);
+        }
+
+        // Update status permintaan
+        $this->Permintaan_barang_model->update_status($item['id_permintaan'], $update_data);
+
+        // Update catatan stok terakhir
+        $updated_barang = $this->Barang_model->get_id($id_barang);
+        $stok_saved = $this->Permintaan_barang_model->simpan_current_stok($item['id_permintaan'], $updated_barang['stok']);
+
+        if (!$stok_saved) {
+            $this->db->trans_rollback();
+            return $this->response_error("Gagal update rollback stok keluar.");
+        }
+
+        $this->db->trans_commit();
+    }
+
+
+    private function handle_rejected_from_pending($item, $permintaan)
+    {
+        // Update status permintaan saja, tidak perlu transaksi
+        $update_data = [
+            'jumlah_approved' => 0,
+            'status' => 'Rejected',
+        ];
+
+        $this->Permintaan_barang_model->update_status($item['id_permintaan'], $update_data);
+    }
+
+
     public function update_status_put()
     {
-        // Ambil data dari request body dalam bentuk JSON
         $data = json_decode($this->input->raw_input_stream, true);
 
         if (!is_array($data) || empty($data)) {
-            // Jika data tidak valid, kembalikan error response
+            return $this->response_error('Invalid input. Please provide valid JSON data.');
+        }
+
+        $butuh_transaksi = $this->cek_butuh_transaksi($data);
+        $id_transaksi = $butuh_transaksi ? $this->buat_transaksi_permintaan($data[0]) : null;
+
+        foreach ($data as $item) {
+            if (!isset($item['id_permintaan'], $item['status'], $item['jumlah_approved'])) {
+                return $this->response_error('Invalid data structure. Each item must contain id_permintaan, status, and jumlah.');
+            }
+
+            $permintaan = $this->Permintaan_barang_model->get_permintaan($item['id_permintaan']);
+
+            if ($item['status'] === 'Approved') {
+                $this->handle_approved($item, $permintaan, $id_transaksi);
+            } else if ($item['status'] === 'Rejected' && $permintaan['status'] === 'Approved') {
+                $this->handle_rejected_from_approved($item, $permintaan);
+            } else if ($item['status'] === 'Pending' && $permintaan['status'] === 'Approved') {
+                $this->handle_pending_from_approved($item, $permintaan);
+            } else if ($item['status'] === 'Rejected' && $permintaan['status'] === 'Pending') {
+                $this->handle_rejected_from_pending($item, $permintaan);
+            }
+        }
+
+        $this->response(['status' => 'success', 'message' => 'Status updated and stock adjusted successfully.'], 200);
+    }
+
+
+    public function approve_transaksi_get($id_transaksi,$status)
+    {
+        $update_trans = $this->Permintaan_barang_model->approve_transaksi($id_transaksi,$status);
+        // var_dump($update_trans);
+        // die;
+
+        if ($update_trans) {
+            $this->response([
+                'status' => 'success',
+                'message' => 'Status Permintaan Berhasil Diubah.'
+            ], 200);
+        } else {
             $this->response([
                 'status' => 'Gagal',
-                'message' => 'Invalid input. Please provide valid JSON data.'
+                'message' => 'Status Permintaan Gagal Diubah.'
             ], 200);
-            return;
         }
-
-        $butuh_transaksi = false;
-
-        foreach ($data as $item) {
-            if ($item['status'] === 'Approved') {
-                $database_permintaan = $this->Permintaan_barang_model->get_permintaan($item['id_permintaan']);
-                if ($database_permintaan['status'] === 'Pending' || $database_permintaan['status'] === 'Rejected' || $database_permintaan['status'] === 'Pengadaan') {
-                    if (isset($item['is_buat_pengajuan']) && $item['is_buat_pengajuan']) {
-                        $butuh_transaksi = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-
-        $id_transaksi_permintaan = null;
-        if ($butuh_transaksi) {
-            $id_transaksi_permintaan = $this->Permintaan_barang_model->insert_transaksi_permintaan([
-                'id_ruangan' => $database_permintaan['id_ruangan'], // asumsi semua item ruangan sama, kalau beda, sesuaikan
-                'id_user' => $this->decoded_token['id_user']
-            ]);
-        }
-
-
-
-        // Loop melalui setiap item dalam data
-        foreach ($data as $item) {
-            // Validasi setiap item (id_permintaan, status, jumlah harus ada)
-            if (!isset($item['id_permintaan'], $item['status'], $item['jumlah_approved'])) {
-                $this->response([
-                    'status' => 'Gagal',
-                    'message' => 'Invalid data structure. Each item must contain id_permintaan, status, and jumlah.'
-                ], 200);
-                return;
-            }
-
-            $id_permintaan = $item['id_permintaan'];
-            $status = $item['status'];
-            $jumlah_approved = $item['jumlah_approved'];
-            $id_user = $this->decoded_token['id_user'];
-
-
-
-            $database_permintaan = $this->Permintaan_barang_model->get_permintaan($id_permintaan);
-
-            if ($status == 'Approved' && ($database_permintaan['status'] == 'Pending' || $database_permintaan['status'] == 'Rejected' || $database_permintaan['status'] == 'Pengadaan')) {
-                // Ambil jumlah permintaan dan id_barang
-
-
-                $this->db->trans_begin();
-
-                $database_permintaan = $this->Permintaan_barang_model->get_permintaan($id_permintaan);
-
-                $jumlah_permintaan = $database_permintaan['jumlah'];
-
-                // $jumlah_approved = $database_permintaan['jumlah_approved'];
-
-                $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
-
-
-                $barang = $this->Barang_model->get_id($id_barang);
-
-                if ($barang['temp'] == 1) {
-
-                    $last_kd_barang =  $this->Barang_model->get_next_kode_barang($item['kd_subkategori']);
-
-                    $kd_barang = $last_kd_barang;
-                    $barang['kd_barang'] = $kd_barang;
-                    $barang['temp'] = 0;
-                    $barang['harga_satuan'] = $item['harga_satuan'];
-                    $barang['kategori'] = 'ATK';
-                    $barang['kd_subkategori'] = $item['kd_subkategori'];
-
-                    $this->Barang_model->ubah_api($barang['id_barang'], $barang);
-                }
-
-                if ($barang['stok'] < $jumlah_approved) {
-                    $this->response([
-                        'status' => 'Gagal',
-                        'message' => 'Jumlah Approved ' . $barang['nama_barang'] . ' melebihi sisa stok, jika ingin memenuhi kebutuhan melebihi stok, silahkan centang Pengajuan Otomatis.'
-                    ], 200);
-                    return;
-                } else if ($jumlah_approved > $jumlah_permintaan) {
-                    $this->response([
-                        'status' => 'Gagal',
-                        'message' => 'Jumlah Approved melebihi jumlah permintaan'
-                    ], 200);
-                    return;
-                } else {
-
-                    $update_data = [
-                        'jumlah_approved' => $jumlah_approved,
-                        'status' => $status,
-                        'is_buat_pengajuan' => $item['is_buat_pengajuan'],
-                    ];
-
-                    if ($item['is_buat_pengajuan']) {
-                        // Jika is_buat_pengajuan adalah true, buat pengajuan terlebih dahulu
-                        $jumlah_belum_dipenuhi = $database_permintaan['jumlah'] - $jumlah_approved;
-
-                        $barang = $this->Barang_model->get_id($database_permintaan['id_barang']);
-
-
-
-                        $pengajuan_data = [
-                            'id_barang' => $database_permintaan['id_barang'],
-                            'id_user' => $id_user,
-                            'id_ruangan' => $database_permintaan['id_ruangan'],
-                            'tanggal' => date('Y-m-d'),
-                            'jumlah' => $jumlah_belum_dipenuhi,
-                            'harga_pengajuan' => $barang['harga_satuan'],
-                            'kd_program' => $database_permintaan['kd_program'],
-                            'kd_kegiatan' => $database_permintaan['kd_kegiatan'],
-                            'kd_kro' => $database_permintaan['kd_kro'],
-                            'kd_ro' => $database_permintaan['kd_ro'],
-                            'kd_komponen' => $database_permintaan['kd_komponen'],
-                            'status' => 'Pending'
-                        ];
-                        $inserted_id_pengajuan = $this->Pengajuan_barang_model->insert($pengajuan_data);
-
-
-
-                        $inserted_id_transaksi_permintaan = $id_transaksi_permintaan;
-
-
-                        $permintaan_data = [
-                            'id_transaksi' => $inserted_id_transaksi_permintaan,
-                            'id_barang' => $database_permintaan['id_barang'],
-                            'id_user' => $id_user,
-                            'id_ruangan' => $database_permintaan['id_ruangan'],
-                            'tanggal' => date('Y-m-d'),
-                            'jumlah' => $jumlah_belum_dipenuhi,
-                            'status' => 'Pengadaan',
-                            'jumlah_approved' => $jumlah_belum_dipenuhi
-                        ];
-                        $inserted_id_permintaan = $this->Permintaan_barang_model->insert($permintaan_data);
-
-                        if (!$inserted_id_pengajuan || !$inserted_id_permintaan) {
-                            // Jika gagal insert pengajuan atau permintaan, rollback transaksi
-                            $this->db->trans_rollback();
-                            $this->response([
-                                'status' => 'Gagal',
-                                'message' => 'Gagal membuat pengajuan atau permintaan lanjutan'
-                            ], 200);
-                        }
-
-
-
-                        $update_data['id_pengajuan_lanjutan'] = $inserted_id_pengajuan;
-                        $update_data['id_permintaan_lanjutan'] = $inserted_id_permintaan;
-                    }
-
-                    $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
-
-                    $sisa_permintaan = $jumlah_approved;
-
-                    // Ambil stok masuk yang tersedia secara FIFO
-                    $stok_masuk = $this->Barang_masuk_model->get_stok_masuk_fifo($id_barang);
-
-                    foreach ($stok_masuk as $stok) {
-                        if ($sisa_permintaan <= 0) break;
-
-                        $id_masuk = $stok['id_barang_masuk'];
-                        $jumlah_tersedia = $stok['sisa_stok'];
-
-                        if ($jumlah_tersedia == 0) continue;
-
-                        if ($jumlah_tersedia >= $sisa_permintaan) {
-                            // cukup ambil dari entri ini saja
-                            $jumlah_diambil = $sisa_permintaan;
-                            $sisa_permintaan = 0;
-                        } else {
-                            // ambil semua dari entri ini
-                            $jumlah_diambil = $jumlah_tersedia;
-                            $sisa_permintaan -= $jumlah_tersedia;
-                        }
-
-
-                        // Kurangi entri barang_masuk
-                        $kurangi_result = $this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $jumlah_diambil);
-
-                        if (!$kurangi_result) {
-                            $this->db->trans_rollback();
-
-                            $this->response([
-                                'status' => 'Gagal',
-                                'message' => 'Gagal mengurangi stok barang masuk'
-                            ], 200);
-                            return;
-                        }
-
-                        // (Opsional) Simpan transaksi keluar berdasarkan id_masuk
-                        $catat_fifo_result = $this->Permintaan_barang_model->catat_keluar_fifo([
-                            'id_permintaan' => $id_permintaan,
-                            'id_barang_masuk' => $id_masuk,
-                            'jumlah_keluar' => $jumlah_diambil,
-                            'harga_satuan' => $stok['harga']
-                        ]);
-
-                        if (!$catat_fifo_result) {
-                            $this->db->trans_rollback();
-                            $this->response([
-                                'status' => 'Gagal',
-                                'message' => 'Gagal Input Transaksi Keluar FIFO: '
-                            ], 200);
-                            return;
-                        }
-                    }
-
-                    // Update stok akhir
-                    $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
-
-                    $updated_barang = $this->Barang_model->get_id($id_barang);
-
-                    $update_transaksi_stok = $this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok']);
-
-                    if ($update_transaksi_stok) {
-
-                        $this->db->trans_rollback();
-
-                        $this->response(
-                            [
-                                'status' => 'Gagal',
-                                'message' => 'Gagal update ' . $updated_barang['nama_barang'] . ' transaksi keluar stok'
-                            ],
-                            200
-                        );
-
-                        return;
-                    }
-
-                    $this->db->trans_commit();
-                }
-            } else if ($status == 'Rejected' && $database_permintaan['status'] == 'Approved') {
-                // Hanya update status permintaan
-                $this->db->trans_begin();
-
-                $update_data = [
-                    'jumlah_approved' => 0,
-                    'status' => $status,
-                    'is_buat_pengajuan' => false,
-                ];
-
-                if ($database_permintaan['is_buat_pengajuan']) {
-                    // Jika permintaan ini sudah dibuat pengajuan, rollback pengajuan juga
-                    $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($database_permintaan['id_pengajuan_lanjutan']);
-                    $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($database_permintaan['id_permintaan_lanjutan']);
-
-                    if (!$hapus_pengajuan && !$hapus_permintaan) {
-                        $this->db->trans_rollback();
-                        $this->response([
-                            'status' => 'Gagal',
-                            'message' => 'Gagal rollback pengajuan dan permintaan'
-                        ], 200);
-                        return;
-                    }
-
-                    $update_data['id_pengajuan_lanjutan'] = null;
-                    $update_data['id_permintaan_lanjutan'] = null;
-                }
-
-                // Ambil jumlah yang sudah di-approved sebelumnya
-                $jumlah_approved = $database_permintaan['jumlah_approved'];
-
-                // Ambil id_barang dari permintaan
-                $id_barang = $database_permintaan['id_barang'];
-
-                // Tambahkan kembali stok utama
-                $this->Barang_model->tambah_stok_barang($id_barang, $jumlah_approved);
-
-                // Ambil data barang keluar dari FIFO sebelumnya jika ada
-                $barang_keluar = $this->Permintaan_barang_model->get_log_keluar_by_permintaan($id_permintaan); // butuh log catatan sebelumnya
-                // var_dump($barang_keluar);
-                // die;
-
-
-                foreach ($barang_keluar as $keluar) {
-                    $id_masuk = $keluar['id_barang_masuk'];
-                    $jumlah_dikembalikan = $keluar['jumlah_keluar'];
-                    $id_bk_detail = $keluar['id_bk_detail'];
-
-                    // Tambahkan kembali ke entri barang_masuk
-                    $this->Barang_masuk_model->tambah_barang_masuk($id_masuk, $jumlah_dikembalikan);
-                    // Hapus log keluar FIFO
-                    $this->Permintaan_barang_model->soft_delete_keluar($id_bk_detail);
-                }
-
-                // Update status permintaan
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
-
-                // Update catatan stok setelah rollback
-                $updated_barang = $this->Barang_model->get_id($id_barang);
-                $update_transaksi_stok = $this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok']);
-
-                if ($update_transaksi_stok) {
-                    $this->db->trans_rollback();
-                    $this->response([
-                        'status' => 'Gagal',
-                        'message' => 'Gagal update rollback stok keluar'
-                    ], 200);
-                    return;
-                }
-
-                $this->db->trans_commit();
-            } else if ($status == 'Pending' && $database_permintaan['status'] == 'Approved') {
-                // Hanya update status permintaan
-                $this->db->trans_begin();
-
-                $update_data = [
-                    'jumlah_approved' => $database_permintaan['jumlah_approved'],
-                    'status' => $status,
-                    'is_buat_pengajuan' => false,
-                ];
-
-                if ($database_permintaan['is_buat_pengajuan']) {
-                    // Jika permintaan ini sudah dibuat pengajuan, rollback pengajuan juga
-                    $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($database_permintaan['id_pengajuan_lanjutan']);
-                    $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($database_permintaan['id_permintaan_lanjutan']);
-
-                    if (!$hapus_pengajuan && !$hapus_permintaan) {
-                        $this->db->trans_rollback();
-                        $this->response([
-                            'status' => 'Gagal',
-                            'message' => 'Gagal rollback pengajuan dan permintaan'
-                        ], 200);
-                        return;
-                    }
-
-                    $update_data['id_pengajuan_lanjutan'] = null;
-                    $update_data['id_permintaan_lanjutan'] = null;
-                }
-
-                // Ambil jumlah yang sudah di-approved sebelumnya
-                $jumlah_approved = $database_permintaan['jumlah_approved'];
-
-                // Ambil id_barang dari permintaan
-                $id_barang = $database_permintaan['id_barang'];
-
-                // Tambahkan kembali stok utama
-                $this->Barang_model->tambah_stok_barang($id_barang, $jumlah_approved);
-
-                // Ambil data barang keluar dari FIFO sebelumnya jika ada
-                $barang_keluar = $this->Permintaan_barang_model->get_log_keluar_by_permintaan($id_permintaan); // butuh log catatan sebelumnya
-                // var_dump($barang_keluar);
-                // die;
-
-
-                foreach ($barang_keluar as $keluar) {
-                    $id_masuk = $keluar['id_barang_masuk'];
-                    $jumlah_dikembalikan = $keluar['jumlah_keluar'];
-                    $id_bk_detail = $keluar['id_bk_detail'];
-
-                    // Tambahkan kembali ke entri barang_masuk
-                    $this->Barang_masuk_model->tambah_barang_masuk($id_masuk, $jumlah_dikembalikan);
-                    // Hapus log keluar FIFO
-                    $this->Permintaan_barang_model->soft_delete_keluar($id_bk_detail);
-                }
-
-                // Update status permintaan
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
-
-                // Update catatan stok setelah rollback
-                $updated_barang = $this->Barang_model->get_id($id_barang);
-                $update_transaksi_stok = $this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok']);
-
-                if ($update_transaksi_stok) {
-                    $this->db->trans_rollback();
-                    $this->response([
-                        'status' => 'Gagal',
-                        'message' => 'Gagal update rollback stok keluar'
-                    ], 200);
-                    return;
-                }
-
-                $this->db->trans_commit();
-            } else if ($status == 'Rejected' && $database_permintaan['status'] == 'Pending') {
-                // Jika status diubah menjadi Rejected, tidak perlu mengurangi stok
-                // Hanya update status permintaan
-                $update_data = [
-                    'jumlah_approved' => 0,
-                    'status' => $status,
-                ];
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
-            }
-        }
-
-        // // Response success
-        // $this->response([
-        //     'status' => 'success',
-        //     'message' => 'Status updated and stock adjusted successfully.'
-        // ], 200);
     }
-    
 }

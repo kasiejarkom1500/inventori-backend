@@ -394,4 +394,13 @@ class Permintaan_barang_model extends CI_Model
         $this->db->insert('transaksi_permintaan', $data);
         return $this->db->insert_id(); // Mengembalikan ID dari transaksi permintaan yang baru saja dimasukkan
     }
+
+    public function approve_transaksi($id_transaksi,$status)
+    {
+        $this->db->where('id', $id_transaksi);
+        $this->db->update('transaksi_permintaan', array('approved' => $status));
+        return $this->db->affected_rows();
+    }
+
+
 }
