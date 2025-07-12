@@ -39,7 +39,8 @@ class Permintaan_barang_model extends CI_Model
                 0 AS jumlah_keluar,
                 current_stok,
                 sumber.nama_sumber AS uraian,
-                barang.kategori
+                barang.kategori,
+                masuk.created_at AS created_at
             FROM 
                 barang_masuk AS masuk
             JOIN
@@ -57,7 +58,7 @@ class Permintaan_barang_model extends CI_Model
             WHERE
                 masuk.tgl_masuk BETWEEN ? AND ? AND barang.kabupaten_id = ?
             GROUP BY 
-                masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori
+                masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori, masuk.created_at
                 
             UNION
             
@@ -72,7 +73,8 @@ class Permintaan_barang_model extends CI_Model
                 SUM(keluar.jumlah_approved) AS jumlah_keluar,
                 current_stok,
                 ruangan.ruangan AS uraian,
-                barang.kategori
+                barang.kategori,
+                keluar.created_at AS created_at
             FROM 
                 permintaan AS keluar
             JOIN
@@ -86,11 +88,15 @@ class Permintaan_barang_model extends CI_Model
             WHERE
                 keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved' AND keluar.jumlah_approved > 0
             GROUP BY 
-                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori
+                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori, keluar.created_at
         ) AS union_result
-        ORDER BY tanggal ASC";
+        ORDER BY created_at ASC";
         $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id));
 
+        // $check = $this->db->last_query();
+        // $error = $this->db->error();
+        // echo $error['message'];
+        // die;
         return $query->result_array();
     }
 
@@ -141,16 +147,33 @@ class Permintaan_barang_model extends CI_Model
     public function get_grouped_by_date($kabupaten_id = null)
     {
 
-        $this->db->select('tanggal, permintaan.id_user,permintaan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
+        $this->db->select('tanggal, permintaan.id_user,permintaan.id_ruangan,permintaan.id_transaksi,admin_ruangan.ruangan,transaksi_permintaan.approved as approve_tim, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected", SUM(CASE WHEN status = "Pengadaan" THEN 1 ELSE 0 END) AS "Pengadaan" ');
+        $this->db->from('permintaan');
+        $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
+        $this->db->join('transaksi_permintaan', 'permintaan.id_transaksi = transaksi_permintaan.id');
+        if (!$kabupaten_id == null) {
+            $this->db->where('admin_ruangan.id_satker', $kabupaten_id);
+        }
+        $this->db->group_by(array('id_transaksi','tanggal', 'permintaan.id_user', 'permintaan.id_ruangan', 'admin_ruangan.ruangan', 'transaksi_permintaan.approved'));
+        $this->db->order_by('tanggal', 'DESC');
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
+    public function get_grouped_by_transaksi($kabupaten_id = null)
+    {
+
+        $this->db->select('id_transaksi', 'tanggal, permintaan.id_user,permintaan.id_ruangan,admin_ruangan.ruangan, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
         $this->db->from('permintaan');
         $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
         if (!$kabupaten_id == null) {
             $this->db->where('admin_ruangan.id_satker', $kabupaten_id);
         }
-        $this->db->group_by(array('tanggal', 'permintaan.id_user', 'permintaan.id_ruangan', 'admin_ruangan.ruangan'));
+        $this->db->group_by(array('id_transaksi', 'tanggal', 'permintaan.id_user', 'permintaan.id_ruangan', 'admin_ruangan.ruangan'));
         $query = $this->db->get();
         return $query->result_array();
     }
+
 
     public function get_grouped_filter_by_date($bulanTahun, $kabupaten_id = null)
     { // Parameter $bulanTahun diharapkan dalam format YYYY-MM
@@ -168,9 +191,21 @@ class Permintaan_barang_model extends CI_Model
 
     public function get_by_date($id_ruangan, $tanggal)
     {
-        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
+        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, kd_subkategori ,nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
         $this->db->from('permintaan');
         $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
+        $this->db->where('id_ruangan', $id_ruangan);
+        $this->db->where('tanggal', $tanggal);
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
+    public function get_by_id_transaksi($id_transaksi,$id_ruangan, $tanggal)
+    {
+        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, kd_subkategori ,kd_ro , kd_komponen, nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
+        $this->db->from('permintaan');
+        $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
+        $this->db->where('id_transaksi', $id_transaksi);
         $this->db->where('id_ruangan', $id_ruangan);
         $this->db->where('tanggal', $tanggal);
         $query = $this->db->get();
@@ -352,5 +387,11 @@ class Permintaan_barang_model extends CI_Model
     {
         $this->db->where('id_permintaan', $id_permintaan);
         return $this->db->delete('permintaan');
+    }
+
+    public function insert_transaksi_permintaan($data)
+    {
+        $this->db->insert('transaksi_permintaan', $data);
+        return $this->db->insert_id(); // Mengembalikan ID dari transaksi permintaan yang baru saja dimasukkan
     }
 }

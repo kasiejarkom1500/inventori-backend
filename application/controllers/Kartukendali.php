@@ -72,6 +72,7 @@ class KartuKendali extends ApiController
 
             // Tambahkan data barang ke grup yang ditemukan
             $groupedData[$foundIndex]["rows"][] = [
+                "created_at" => $item["created_at"],
                 "tanggal" => $item["tanggal"],
                 "masuk" => $item["jumlah_masuk"],
                 "keluar" => $item["jumlah_keluar"],
@@ -84,46 +85,45 @@ class KartuKendali extends ApiController
         // Return the file as a response
         return $this->response([
             'status' => true,
-            'message' => 'PDF generated successfully',
-            'download_url' => $groupedData
+            'data' => $groupedData
         ], RestController::HTTP_OK);
 
 
-        $url = [];
-        foreach ($groupedData as $pdfData) {
-            $pdfData['logo'] = base_url('/img/logo.png');
+        // $url = [];
+        // foreach ($groupedData as $pdfData) {
+        //     $pdfData['logo'] = base_url('/img/logo.png');
 
-            $html = $this->load->view('kartu_kendali', $pdfData, true);
+        //     $html = $this->load->view('kartu_kendali', $pdfData, true);
 
-            // Aktifkan remote image
-            $options = new Options();
-            $options->set('isRemoteEnabled', true);
+        //     // Aktifkan remote image
+        //     $options = new Options();
+        //     $options->set('isRemoteEnabled', true);
 
-            // Inisialisasi Dompdf dengan opsi
-            $dompdf = new Dompdf($options);
+        //     // Inisialisasi Dompdf dengan opsi
+        //     $dompdf = new Dompdf($options);
 
-            // $dompdf = new Dompdf();
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->render();
+        //     // $dompdf = new Dompdf();
+        //     $dompdf->loadHtml($html);
+        //     $dompdf->setPaper('A4', 'portrait');
+        //     $dompdf->render();
 
-            // Save the PDF temporarily
-            $output = $dompdf->output();
-            $name = 'downloads/Kartu_Kendali_' . $pdfData['id_barang'] . '.pdf';
-            $filePath = FCPATH . $name;
-            file_put_contents($filePath, $output);
+        //     // Save the PDF temporarily
+        //     $output = $dompdf->output();
+        //     $name = 'downloads/Kartu_Kendali_' . $pdfData['id_barang'] . '.pdf';
+        //     $filePath = FCPATH . $name;
+        //     file_put_contents($filePath, $output);
 
-            $url[] = base_url($name);
-        }
+        //     $url[] = base_url($name);
+        // }
 
 
 
-        // Return the file as a response
-        return $this->response([
-            'status' => true,
-            'message' => 'PDF generated successfully',
-            'download_url' => $url
-        ], RestController::HTTP_OK);
+        // // Return the file as a response
+        // return $this->response([
+        //     'status' => true,
+        //     'message' => 'PDF generated successfully',
+        //     'download_url' => $url
+        // ], RestController::HTTP_OK);
     }
 
 

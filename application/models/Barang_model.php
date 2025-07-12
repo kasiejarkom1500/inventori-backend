@@ -51,7 +51,7 @@ class Barang_model extends CI_Model
 	// mendapatkan data barang yang stoknya 5% dibandingkan dengan stok_dasar
 	public function get_barang_stok_minimal($kabupaten_id = null)
 	{
-		$this->db->select('barang.id_barang, barang.nama_barang, stok, stok_dasar as "stok minimum"');
+		$this->db->select('barang.id_barang, barang.nama_barang, stok, stok_dasar as stok_minimum');
 		$this->db->from('barang');
 		$this->db->where('barang.stok < (barang.stok_dasar * 0.05)');
 		$this->db->where('temp',0);
@@ -133,7 +133,16 @@ class Barang_model extends CI_Model
 
 	public function insert_barang($data)
 	{
-		return $this->db->insert('barang', $data);
+		$query = $this->db->insert('barang', $data);
+		//cek error tampilan
+		if ($this->db->error()['code'] !== 0) {
+			log_message('error', 'SQL Query: ' . $this->db->last_query());
+			log_message('error', 'Error Message: ' . print_r($this->db->error(), true));
+			// var_dump($this->db->error());
+			// die;
+			return false; // Mengembalikan false jika terjadi error
+		}
+		return $query; // Mengembalikan hasil query insert
 	}
 	public function simpan()
 	{

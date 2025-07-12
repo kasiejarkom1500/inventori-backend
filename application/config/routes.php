@@ -71,7 +71,7 @@ $route['api/get_barang_masuk'] = 'Barang_masuk_api/all_barang_masuk';
 
 $route['api/get_transaksi_permintaan'] = 'Permintaan_barang_api/transaksi_permintaan';
 
-$route['api/get_detail_permintaan/(:num)/(:any)'] = 'Permintaan_barang_api/permintaan_detail/$1/$2';
+$route['api/get_detail_permintaan/(:num)/(:any)/(:num)'] = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
 
 $route['api/cetak_permintaan/(:num)/(:any)'] = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
 
@@ -151,4 +151,20 @@ $route['api/pembelian_bulan/(:any)'] = 'Dashboard_api/pembelian_bulan/$1';
 
 //routes pembelian detail
 $route['api/pembelian_detail/(:any)'] = 'Dashboard_api/pembelian_detail/$1';
+
+$route['api/program'] = 'Pok_api/program';
+
+//routes kegiatan
+// $routes['api/kegiatan/(:any)'] = 'Pok_api/kegiatan/$1';
+
+$route['api/kegiatan/(:any)'] = 'Pok_api/kegiatan/$1';
+
+//routes kro
+$route['api/kro/(:any)'] = 'Pok_api/kro/$1';
+//routes ro
+$route['api/ro/(:any)'] = 'Pok_api/ro/$1';
+//routes komponen
+$route['api/komponen/(:any)'] = 'Pok_api/komponen/$1';
+//routes gabungan pok
+$route['api/gabungan_pok'] = 'Pok_api/gabungan_pok';   
 

@@ -126,7 +126,9 @@ class LoginController_api extends RestController
      */
     private function cek_login($username, $password)
     {
-        $url = 'https://bpsjambi.id/sso/public/index.php/auth/login';
+        $sso_url = 'https://bpsjambi.id/sso/public/index.php/';
+        // $sso_url = 'https://bpsjambi.web.bps.go.id/home/public/index.php/';
+        $url = $sso_url . 'auth/login';
         $data = [
             'username' => $username,
             'password' => $password
@@ -148,7 +150,7 @@ class LoginController_api extends RestController
 
         if ($response->status == 200 || isset($response->token)) {
 
-            $url_validation = 'https://bpsjambi.id/sso/public/index.php/auth/validate-token';
+            $url_validation = $sso_url .'auth/validate-token';
             $data = [
                 'token' => $response->token,
                 'secret_key' => "rahasianegara!"
@@ -182,7 +184,7 @@ class LoginController_api extends RestController
                 return false;
             }
 
-            $url_pegawai = 'https://bpsjambi.id/sso/public/index.php/pegawai/by-niplama';
+            $url_pegawai = $sso_url . 'pegawai/by-niplama';
             $data = [
                 'token' => $response->token,
                 'secret_key' => "rahasianegara!",
@@ -231,7 +233,8 @@ class LoginController_api extends RestController
             2 => 'admin_pengadaan',
             3 => 'admin_pembelian',
             4 => 'user',
-            5 => 'viewer'
+            5 => 'viewer',
+            6 => 'ketua_tim'
         ];
 
         $role_id = (int)$role->id_role;
