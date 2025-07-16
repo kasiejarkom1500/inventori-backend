@@ -84,6 +84,8 @@ class Laporan_pengajuan_api extends ApiController
         }
 
         $input_array = $data_pengajuan;
+        // var_dump($data_pengajuan);
+        // die;
         $data = [];
 
         foreach ($input_array as $item) {

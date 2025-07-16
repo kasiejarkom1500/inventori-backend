@@ -91,6 +91,23 @@ class Barang_api extends ApiController
         }
     }
 
+     public function barang_BASO_get()
+    {
+
+        $barang = $this->Barang_model->baso_data($this->decoded_token['id_satker']);
+        if ($barang) {
+            $this->response([
+                'status' => true,
+                'data' => $barang
+            ], RESTController::HTTP_OK);
+        } else {
+            $this->response([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], RESTController::HTTP_OK);
+        }
+    }
+
     public function all_barang_ark_get()
     {
 

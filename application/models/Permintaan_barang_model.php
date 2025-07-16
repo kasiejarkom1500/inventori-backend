@@ -17,7 +17,7 @@ class Permintaan_barang_model extends CI_Model
     {
         $this->db->set('current_stok', $jumlah, FALSE);
         $this->db->where('id_permintaan', $id_permintaan);
-        $this->db->update('permintaan');
+        return $this->db->update('permintaan');
     }
 
 
@@ -147,7 +147,7 @@ class Permintaan_barang_model extends CI_Model
     public function get_grouped_by_date($kabupaten_id = null)
     {
 
-        $this->db->select('tanggal, permintaan.id_user,permintaan.id_ruangan,permintaan.id_transaksi,admin_ruangan.ruangan,transaksi_permintaan.approved as approve_tim, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected", SUM(CASE WHEN status = "Pengadaan" THEN 1 ELSE 0 END) AS "Pengadaan" ');
+        $this->db->select('tanggal, permintaan.id_user,permintaan.id_ruangan,permintaan.id_transaksi,admin_ruangan.ruangan,transaksi_permintaan.approved as approve_tim,transaksi_permintaan.approve_gudang, COUNT(*) as jumlah_permintaan, SUM(CASE WHEN status = "Approved Gudang" THEN 1 ELSE 0 END) AS "ApprovedGudang", SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected", SUM(CASE WHEN status = "Pengadaan" THEN 1 ELSE 0 END) AS "Pengadaan" ');
         $this->db->from('permintaan');
         $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
         $this->db->join('transaksi_permintaan', 'permintaan.id_transaksi = transaksi_permintaan.id');
@@ -177,7 +177,7 @@ class Permintaan_barang_model extends CI_Model
 
     public function get_grouped_filter_by_date($bulanTahun, $kabupaten_id = null)
     { // Parameter $bulanTahun diharapkan dalam format YYYY-MM
-        $this->db->select('permintaan.tanggal, permintaan.id_user, permintaan.id_ruangan, admin_ruangan.ruangan, COUNT(*) as jumlah_jenis_barang, SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
+        $this->db->select('permintaan.tanggal, permintaan.id_user, permintaan.id_ruangan, admin_ruangan.ruangan, COUNT(*) as jumlah_jenis_barang, SUM(CASE WHEN status = "Approved Gudang" THEN 1 ELSE 0 END) AS "ApprovedGudang", SUM(CASE WHEN status = "Approved" THEN 1 ELSE 0 END) AS "Approved", SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS "Pending", SUM(CASE WHEN status = "Rejected" THEN 1 ELSE 0 END) AS "Rejected" ');
         $this->db->from('permintaan');
         $this->db->join('admin_ruangan', 'permintaan.id_ruangan = admin_ruangan.id_ruangan');
         $this->db->where("DATE_FORMAT(permintaan.tanggal, '%Y-%m') =", $bulanTahun);
@@ -287,6 +287,10 @@ class Permintaan_barang_model extends CI_Model
         if ($this->db->affected_rows() == 0) {
             return false; // Jika tidak ada baris yang terpengaruh, berarti insert gagal
         }
+
+        // $error = $this->db->error();
+        // echo $error['message'];
+        // die;
         // Jika insert berhasil, kita bisa mengembalikan ID dari permintaan yang baru saja dimasukkan
         return $this->db->insert_id(); // Mengembalikan ID dari permintaan yang baru saja dimasukkan
     }
@@ -321,6 +325,14 @@ class Permintaan_barang_model extends CI_Model
         return $query->row_array();
     }
 
+     public function get_permintaan_by_id_transaksi($id_transaksi)
+    {
+        $this->db->select('*');
+        $this->db->where('id_transaksi', $id_transaksi);
+        $query = $this->db->get('permintaan');
+        return $query->result_array();
+    }
+
     public function get_id_barang($id_permintaan)
     {
         $this->db->select('id_barang');
@@ -350,9 +362,7 @@ class Permintaan_barang_model extends CI_Model
         return $this->db->insert('barang_keluar_detail', $data);
 
         // $check = $this->db->last_query();
-        // $error = $this->db->error();
-        // echo $check;
-        // die;
+
 
 
 
@@ -399,6 +409,21 @@ class Permintaan_barang_model extends CI_Model
     {
         $this->db->where('id', $id_transaksi);
         $this->db->update('transaksi_permintaan', array('approved' => $status));
+        return $this->db->affected_rows();
+    }
+
+    public function get_transaksi_permintaan($id_transaksi)
+    {
+        $this->db->select('*');
+        $this->db->where('id', $id_transaksi);
+        $query = $this->db->get('transaksi_permintaan');
+        return $query->row_array();
+    }
+
+    public function update_transaksi_permintaan($id_transaksi, $data)
+    {
+        $this->db->where('id', $id_transaksi);
+        $this->db->update('transaksi_permintaan', $data);
         return $this->db->affected_rows();
     }
 

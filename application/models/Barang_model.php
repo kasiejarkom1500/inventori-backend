@@ -7,46 +7,72 @@ class Barang_model extends CI_Model
 
 	// }
 
-	
-	
+
+
 	public function tampil_data_all($kabupaten_id = null)
 	{
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
-		$this->db->where('temp',0);
+		$this->db->where('temp', 0);
 		if ($kabupaten_id !== null) {
 			$this->db->where('barang.kabupaten_id', $kabupaten_id);
 		}
 		$query = $this->db->get();
 		return $query->result_array();
 	}
-	
-    public function get_sum($kategori, $kabupaten_id = null)
-    {
-        $this->db->select('COUNT(*) as total');
-        $this->db->from('barang');
-        $this->db->where('kategori', $kategori);
-        $this->db->where('temp', 0);
-        if ($kabupaten_id !== null) {
+
+	public function baso_data($kabupaten_id = null)
+	{
+		$this->db->select('barang.id_barang,barang.nama_barang,barang.satuan,barang.stok,barang.harga_satuan,harga_data.total_harga');
+		$this->db->from('barang');
+
+		// Join subquery stok
+		// $this->db->join("(SELECT id_barang, SUM(sisa_stok) AS stok FROM barang_masuk WHERE temp = 0 GROUP BY id_barang) AS stok_data", 'barang.id_barang = stok_data.id_barang', 'left');
+
+		// Join subquery total_harga
+		$this->db->join("(SELECT id_barang, SUM(harga * sisa_stok) AS total_harga FROM barang_masuk GROUP BY id_barang) AS harga_data", 'barang.id_barang = harga_data.id_barang', 'left');
+
+		// Optional filter kabupaten_id
+		if ($kabupaten_id !== null) {
+			$this->db->where('barang.kabupaten_id', $kabupaten_id);
+		}
+
+		$this->db->where('barang.temp', 0);
+		$this->db->where('barang.stok > 0');
+
+		$query = $this->db->get();
+
+		// var_dump($this->db->error()['message']);
+		// die;
+		return $query->result_array();
+	}
+
+	public function get_sum($kategori, $kabupaten_id = null)
+	{
+		$this->db->select('COUNT(*) as total');
+		$this->db->from('barang');
+		$this->db->where('kategori', $kategori);
+		$this->db->where('temp', 0);
+		if ($kabupaten_id !== null) {
 			$this->db->where('kabupaten_id', $kabupaten_id);
 		}
-        $query = $this->db->get();
-        return $query->row()->total; // Mengembalikan angka, bukan objek
-    }
-    
-    public function get_sum_stok($kategori, $kabupaten_id = null)
-    {
-        $this->db->select('SUM(stok) as total_stok');
-        $this->db->from('barang');
-        $this->db->where('kategori', $kategori);
-        $this->db->where('temp', 0);
-        if ($kabupaten_id !== null) {
+		$query = $this->db->get();
+		return $query->row()->total; // Mengembalikan angka, bukan objek
+	}
+
+	public function get_sum_stok($kategori, $kabupaten_id = null)
+	{
+		$this->db->select('SUM(stok) as total_stok');
+		$this->db->from('barang');
+		$this->db->where('kategori', $kategori);
+		$this->db->where('temp', 0);
+		if ($kabupaten_id !== null) {
 			$this->db->where('kabupaten_id', $kabupaten_id);
 		}
-        $query = $this->db->get();
-        return $query->row()->total_stok; // Mengembalikan angka, bukan objek
-    }
+		$query = $this->db->get();
+		return $query->row()->total_stok; // Mengembalikan angka, bukan objek
+	}
 
 	// mendapatkan data barang yang stoknya 5% dibandingkan dengan stok_dasar
 	public function get_barang_stok_minimal($kabupaten_id = null)
@@ -54,7 +80,7 @@ class Barang_model extends CI_Model
 		$this->db->select('barang.id_barang, barang.nama_barang, stok, stok_dasar as stok_minimum');
 		$this->db->from('barang');
 		$this->db->where('barang.stok < (barang.stok_dasar * 0.05)');
-		$this->db->where('temp',0);
+		$this->db->where('temp', 0);
 		if ($kabupaten_id !== null) {
 			$this->db->where('barang.kabupaten_id', $kabupaten_id);
 		}
@@ -69,21 +95,21 @@ class Barang_model extends CI_Model
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
 		$this->db->where('barang.kategori', "ATK");
-		$this->db->where('temp',0);
+		$this->db->where('temp', 0);
 		if ($kabupaten_id !== null) {
 			$this->db->where('barang.kabupaten_id', $kabupaten_id);
 		}
 		$query = $this->db->get();
 		return $query->result_array();
 	}
-	
+
 	public function tampil_data_ark($kabupaten_id = null)
 	{
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
 		$this->db->where('barang.kategori', "ARK");
-		$this->db->where('temp',0);
+		$this->db->where('temp', 0);
 		if ($kabupaten_id !== null) {
 			$this->db->where('barang.kabupaten_id', $kabupaten_id);
 		}
@@ -100,7 +126,6 @@ class Barang_model extends CI_Model
 		$query = $this->db->get('barang');
 
 		return $query->num_rows() > 0;
-
 	}
 
 	public function insert_harga_pengajuan($data)
@@ -192,7 +217,7 @@ class Barang_model extends CI_Model
         </button>
       </div>');
 	}
-	
+
 	public function hapus_api($id, $kabupaten_id = null)
 	{
 		$this->db->where('id_barang', $id);
@@ -273,22 +298,22 @@ class Barang_model extends CI_Model
 		// Redirect kembali ke halaman yang sesuai
 		redirect('barang'); // Ganti dengan URL yang sesuai
 	}
-	
-	public function ubah_api($id,$data)
+
+	public function ubah_api($id, $data)
 	{
-	    // Check for duplicate kd_barang
+		// Check for duplicate kd_barang
 		$this->db->select('id_barang');
 		$this->db->from('barang');
-		$this->db->where('kd_barang',$data['kd_barang']);
+		$this->db->where('kd_barang', $data['kd_barang']);
 		$this->db->where('id_barang !=', $id); // Exclude the current record
 		$query = $this->db->get();
 
 		if ($query->num_rows() > 0) {
 			return false;
 		}
-	    
+
 		$this->db->where('id_barang', $id);
-        return $this->db->update('barang', $data);
+		return $this->db->update('barang', $data);
 	}
 
 
@@ -334,44 +359,44 @@ class Barang_model extends CI_Model
 	}
 
 
-    public function get_max_kode()
+	public function get_max_kode()
 	{
-	    $this->db->select_max('kd_barang');
-	    $this->db->where('CHAR_LENGTH(kd_barang) >', 4 );
-        $query = $this->db->get('barang');
-                
-        $result = $query->row();
-        return $max_value = $result->kd_barang;
+		$this->db->select_max('kd_barang');
+		$this->db->where('CHAR_LENGTH(kd_barang) >', 4);
+		$query = $this->db->get('barang');
+
+		$result = $query->row();
+		return $max_value = $result->kd_barang;
 	}
 
 	public function get_next_kode_barang($kd_subkategori)
-{
-    // Ambil kd_barang terbesar yang sesuai dengan subkategori
-    $this->db->select('kd_barang');
-    $this->db->like('kd_barang', $kd_subkategori . '.', 'after'); // kd_barang LIKE 'kd_subkategori.%'
-    $this->db->order_by('kd_barang', 'DESC');
-    $this->db->limit(1);
-    $query = $this->db->get('barang');
+	{
+		// Ambil kd_barang terbesar yang sesuai dengan subkategori
+		$this->db->select('kd_barang');
+		$this->db->like('kd_barang', $kd_subkategori . '.', 'after'); // kd_barang LIKE 'kd_subkategori.%'
+		$this->db->order_by('kd_barang', 'DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('barang');
 
-    if ($query->num_rows() > 0) {
-        $last_kode = $query->row()->kd_barang;
-        
-        // Ambil digit terakhir setelah titik
-        $parts = explode('.', $last_kode);
-        $last_number = intval(end($parts));
+		if ($query->num_rows() > 0) {
+			$last_kode = $query->row()->kd_barang;
 
-        // Tambahkan 1
-        $next_number = $last_number + 1;
-    } else {
-        // Jika belum ada kd_barang untuk subkategori tersebut
-        $next_number = 1;
-    }
+			// Ambil digit terakhir setelah titik
+			$parts = explode('.', $last_kode);
+			$last_number = intval(end($parts));
 
-    // Gabungkan jadi format baru
-    return $kd_subkategori . '.' . $next_number;
-}
+			// Tambahkan 1
+			$next_number = $last_number + 1;
+		} else {
+			// Jika belum ada kd_barang untuk subkategori tersebut
+			$next_number = 1;
+		}
 
-    
+		// Gabungkan jadi format baru
+		return $kd_subkategori . '.' . $next_number;
+	}
+
+
 	public function update_harga_pengajuan($harga_pengajuan_input)
 	{
 

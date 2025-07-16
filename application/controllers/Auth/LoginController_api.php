@@ -27,6 +27,7 @@ class LoginController_api extends RestController
         // Load Dependencies
         $this->load->model('User_model');
         $this->load->model('Role_model');
+        $this->load->model('Ruangan_model');
 
 
         $this->load->helper('form');
@@ -126,8 +127,8 @@ class LoginController_api extends RestController
      */
     private function cek_login($username, $password)
     {
-        $sso_url = 'https://bpsjambi.id/sso/public/index.php/';
-        // $sso_url = 'https://bpsjambi.web.bps.go.id/home/public/index.php/';
+        // $sso_url = 'https://bpsjambi.id/sso/public/index.php/';
+        $sso_url = 'https://bpsjambi.web.bps.go.id/home/public/index.php/';
         $url = $sso_url . 'auth/login';
         $data = [
             'username' => $username,
@@ -150,7 +151,7 @@ class LoginController_api extends RestController
 
         if ($response->status == 200 || isset($response->token)) {
 
-            $url_validation = $sso_url .'auth/validate-token';
+            $url_validation = $sso_url . 'auth/validate-token';
             $data = [
                 'token' => $response->token,
                 'secret_key' => "rahasianegara!"
@@ -170,9 +171,11 @@ class LoginController_api extends RestController
             $context  = stream_context_create($options);
             $response_validation = file_get_contents($url_validation, false, $context);
             if ($response_validation === false) {
+
                 return false;
             }
             $response_validation = json_decode($response_validation);
+
 
             $data_user = $response_validation->user ?? null;
 
@@ -211,14 +214,24 @@ class LoginController_api extends RestController
 
         $user = $this->db->get_where('user', ['nip_lama' => $data_user->nip_lama_user])->row_array();
 
+
+        // var_dump($user);
+        // die;
+
         if (!$user) return false;
 
         $role = $this->Role_model->get_role_by_id($user['id_user']);
-        if (!$role) return false;
+        if (!$role) return $this->response([
+            'status' => 'Gagal',
+            'message' => 'Role tidak ditemukan silahkan hubungi admin'
+        ], RestController::HTTP_UNAUTHORIZED);
+
         $data_ruangan = null;
-        if ($role->id_role == '4') {
+        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0') {
             $data_ruangan = [];
-            $ruangan = $this->db->get_where('admin_ruangan', ['id_user' => $user['id_user']])->result_array();
+            $ruangan = $this->Ruangan_model->get_ruangan($user['id_user']);
+            // var_dump($this->db->error()['message']); 
+            // die;
             foreach ($ruangan as $item) {
                 $data_ruangan[] = [
                     'id_ruangan' => $item['id_ruangan'],

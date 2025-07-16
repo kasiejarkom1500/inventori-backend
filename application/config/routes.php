@@ -75,7 +75,7 @@ $route['api/get_detail_permintaan/(:num)/(:any)/(:num)'] = 'Permintaan_barang_ap
 
 $route['api/cetak_permintaan/(:num)/(:any)'] = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
 
-$route['api/update_status'] = 'Permintaan_barang_api/update_status';
+$route['api/update_status'] = 'Permintaan_barang_api/update_status_admin';
 
 $route['api/tambah_permintaan'] = 'Permintaan_barang_api/simpan';
 
@@ -170,4 +170,11 @@ $route['api/gabungan_pok'] = 'Pok_api/gabungan_pok';
 
 //route approve transaksi permintaan
 $route['api/approve_transaksi/(:num)/(:num)'] = 'Permintaan_barang_api/approve_transaksi/$1/$2';
+
+//route ambil data baso
+$route['api/get_baso'] = 'Barang_api/barang_BASO';
+
+//route approve gudang
+$route['api/approve_gudang/(:num)/(:num)'] = 'Permintaan_barang_api/approve_gudang/$1/$2';
+
 
