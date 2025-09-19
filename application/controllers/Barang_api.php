@@ -91,7 +91,7 @@ class Barang_api extends ApiController
         }
     }
 
-     public function barang_BASO_get()
+    public function barang_BASO_get()
     {
 
         $barang = $this->Barang_model->baso_data($this->decoded_token['id_satker']);
@@ -145,68 +145,64 @@ class Barang_api extends ApiController
     public function insert_barang_post()
     {
         // Validasi input
-        $this->form_validation->set_rules('kd_barang', 'Kode Barang', 'trim|required');
-        $this->form_validation->set_rules('nama_barang', 'Nama Barang', 'trim|required');
-        $this->form_validation->set_rules('kategori', 'Kategori', 'trim|required');
-        $this->form_validation->set_rules('satuan', 'Satuan', 'trim|required');
-        $this->form_validation->set_rules('stok', 'Stok', 'trim|required|numeric');
-        $this->form_validation->set_rules('harga_satuan', 'Harga Satuan', 'trim|required|numeric');
+        // $this->form_validation->set_rules('kd_barang', 'Kode Barang', 'trim|required');
+        // $this->form_validation->set_rules('nama_barang', 'Nama Barang', 'trim|required');
+        // $this->form_validation->set_rules('kategori', 'Kategori', 'trim|required');
+        // $this->form_validation->set_rules('satuan', 'Satuan', 'trim|required');
+        // $this->form_validation->set_rules('stok', 'Stok', 'trim|required|numeric');
+        // $this->form_validation->set_rules('harga_satuan', 'Harga Satuan', 'trim|required|numeric');
 
-        if ($this->form_validation->run() == FALSE) {
-            // Jika validasi gagal
-            $this->response([
-                'status' => FALSE,
-                'message' => validation_errors()
-            ], RestController::HTTP_BAD_REQUEST);
-        } else {
-            // Ambil data dari request
-            $kd_barang = $this->post('kd_barang');
-            $nama_barang = $this->post('nama_barang');
-            $kategori = $this->post('kategori');
-            $satuan = $this->post('satuan');
-            $stok = $this->post('stok');
-            $harga_satuan = $this->post('harga_satuan');
-            $stok_dasar = $this->post('stok_dasar');
+        // Ambil data dari request
+        $kd_barang = $this->post('kd_barang');
+        $nama_barang = $this->post('nama_barang');
+        $kategori = $this->post('kategori');
+        $satuan = $this->post('satuan');
+        $stok = $this->post('stok');
+        $harga_satuan = $this->post('harga_satuan');
+        $stok_dasar = $this->post('stok_dasar');
+        $kd_subkategori = $this->post('kd_subkategori');
+        $kabupten_id = $this->post('kabupaten_id');
 
-            // Persiapkan data untuk insert ke tabel barang
-            $data_barang = array(
-                'kd_barang' => $kd_barang,
-                'nama_barang' => $nama_barang,
-                'kategori' => $kategori,
-                'satuan' => $satuan,
-                'stok' => $stok,
-                'harga_satuan' => $harga_satuan,
-                'stok_dasar' => $stok_dasar
+        // Persiapkan data untuk insert ke tabel barang
+        $data_barang = array(
+            'kd_subkategori' => $kd_subkategori,
+            'kd_barang' => $kd_barang,
+            'kabupaten_id' => $kabupten_id,
+            'nama_barang' => $nama_barang,
+            'kategori' => $kategori,
+            'satuan' => $satuan,
+            'stok' => $stok,
+            'harga_satuan' => $harga_satuan,
+            'stok_dasar' => $stok_dasar
+        );
+
+        // Coba insert data ke tabel barang
+        if ($this->db->insert('barang', $data_barang)) {
+            // Ambil ID terakhir yang dimasukkan
+            $last_id = $this->db->insert_id();
+
+            // Persiapkan data untuk tabel harga_pengajuan
+            $data_harga_pengajuan = array(
+                'id_barang' => $last_id,
+                'harga_pengajuan' => 0
             );
 
-            // Coba insert data ke tabel barang
-            if ($this->db->insert('barang', $data_barang)) {
-                // Ambil ID terakhir yang dimasukkan
-                $last_id = $this->db->insert_id();
+            // Insert ke tabel harga_pengajuan
+            $this->Barang_model->insert_harga_pengajuan($data_harga_pengajuan);
 
-                // Persiapkan data untuk tabel harga_pengajuan
-                $data_harga_pengajuan = array(
-                    'id_barang' => $last_id,
-                    'harga_pengajuan' => 0
-                );
-
-                // Insert ke tabel harga_pengajuan
-                $this->Barang_model->insert_harga_pengajuan($data_harga_pengajuan);
-
-                // Kirim response sukses
-                $this->response([
-                    'status' => TRUE,
-                    'message' => 'Data barang berhasil ditambahkan',
-                    'data' => $data_barang
-                ], RestController::HTTP_OK);
-            } else {
-                // Jika insert barang gagal
-                $error = $this->db->error();
-                $this->response([
-                    'status' => FALSE,
-                    'message' => 'Data gagal ditambahkan ke barang: ' . $error['message']
-                ], RestController::HTTP_OK);
-            }
+            // Kirim response sukses
+            $this->response([
+                'status' => TRUE,
+                'message' => 'Data barang berhasil ditambahkan',
+                'data' => $data_barang
+            ], RestController::HTTP_OK);
+        } else {
+            // Jika insert barang gagal
+            $error = $this->db->error();
+            $this->response([
+                'status' => FALSE,
+                'message' => 'Data gagal ditambahkan ke barang: ' . $error['message']
+            ], RestController::HTTP_OK);
         }
     }
 

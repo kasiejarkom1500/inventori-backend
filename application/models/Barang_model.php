@@ -94,6 +94,7 @@ class Barang_model extends CI_Model
 		$this->db->select('barang.*, harga_pengajuan.harga_pengajuan');
 		$this->db->from('barang');
 		$this->db->join('harga_pengajuan', 'barang.id_barang = harga_pengajuan.id_barang', 'left');
+		$this->db->join('sub_kategori', 'barang.kd_subkategori = sub_kategori.kd_subkategori', 'left');
 		$this->db->where('barang.kategori', "ATK");
 		$this->db->where('temp', 0);
 		if ($kabupaten_id !== null) {

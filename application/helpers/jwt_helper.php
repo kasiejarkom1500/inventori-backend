@@ -7,7 +7,7 @@ function generate_jwt($data)
 {
     $key = getenv('JWT_SECRET') ?: 'your-secret-key';
     $issuedAt = time();
-    $expirationTime = $issuedAt + 864000; // 1 jam
+    $expirationTime = $issuedAt + 28800; // 1 jam
     $payload = [
         'iat' => $issuedAt,
         'exp' => $expirationTime,
