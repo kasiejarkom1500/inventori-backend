@@ -45,6 +45,8 @@ class KartuKendali extends ApiController
 
         $data_keluar = $this->Permintaan_barang_model->karken_data($tgl_mulai, $tgl_selesai, $this->decoded_token['id_satker']);
 
+        // var_dump($data_keluar);
+        // die;
         // Proses data untuk dikelompokkan
         $groupedData = [];
         foreach ($data_keluar as $item) {

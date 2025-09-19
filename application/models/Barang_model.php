@@ -305,6 +305,7 @@ class Barang_model extends CI_Model
 		$this->db->select('id_barang');
 		$this->db->from('barang');
 		$this->db->where('kd_barang', $data['kd_barang']);
+		$this->db->where('kabupaten_id', $data['kabupaten_id']);
 		$this->db->where('id_barang !=', $id); // Exclude the current record
 		$query = $this->db->get();
 

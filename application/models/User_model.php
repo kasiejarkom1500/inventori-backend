@@ -15,6 +15,21 @@ class User_model extends CI_Model
         return $this->db->get('user')->result_array();
     }
 
+    //edit data user by id
+    public function update_user($data, $table, $id)
+    {
+        $this->db->where('id_user', $id);
+        return $this->db->update($table, $data);
+        
+    }
+
+    public function hapus_user($id)
+    {
+        $this->db->where('id_user', $id);
+        return $this->db->delete('user');
+        
+    }
+
 
 	
 
@@ -35,6 +50,11 @@ class User_model extends CI_Model
         $this->db->where('username', $username);
         $query = $this->db->get();
         return $query->row();
+    }
+
+    public function tambah_user($data)
+    {
+        return $this->db->insert('user', $data);
     }
 
     

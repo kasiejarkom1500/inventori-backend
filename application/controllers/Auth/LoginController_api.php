@@ -227,16 +227,17 @@ class LoginController_api extends RestController
         ], RestController::HTTP_UNAUTHORIZED);
 
         $data_ruangan = null;
-        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0') {
+        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0' || $role->id_role == '7') {
             $data_ruangan = [];
             $ruangan = $this->Ruangan_model->get_ruangan($user['id_user']);
-            // var_dump($this->db->error()['message']); 
-            // die;
-            foreach ($ruangan as $item) {
-                $data_ruangan[] = [
-                    'id_ruangan' => $item['id_ruangan'],
-                    'ruangan' => $item['ruangan']
-                ];
+            //jika ruangan kosong maka tidak perlu diisi
+            if ($ruangan) {
+                foreach ($ruangan as $item) {
+                    $data_ruangan[] = [
+                        'id_ruangan' => $item['id_ruangan'],
+                        'ruangan' => $item['ruangan']
+                    ];
+                }
             }
         }
 
@@ -247,7 +248,8 @@ class LoginController_api extends RestController
             3 => 'admin_pembelian',
             4 => 'user',
             5 => 'viewer',
-            6 => 'ketua_tim'
+            6 => 'ketua_tim',
+            7 => 'ketua_gudang'
         ];
 
         $role_id = (int)$role->id_role;

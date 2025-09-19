@@ -129,6 +129,9 @@ $route['api/summary_karken'] = 'Kartukendali/summary';
 
 //User
 $route['api/get_users'] = 'User_api/all_user';
+$route['api/add_user'] = 'User_api/add_user';
+$route['api/update_user'] = 'User_api/update_user';
+$route['api/hapus_user/(:num)'] = 'User_api/hapus_user/$1';
 
 //Dashboard
 $route['api/total_barang/(:any)'] = 'Dashboard_api/total_barang/$1';

@@ -57,7 +57,7 @@ class Barang_masuk_api extends ApiController
             $this->response([
                 'status' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], RESTController::HTTP_INTERNAL_SERVER_ERROR);
+            ], RESTController::HTTP_INTERNAL_ERROR);
         }
     }
     
@@ -84,7 +84,7 @@ class Barang_masuk_api extends ApiController
             $this->response([
                 'status' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], RESTController::HTTP_INTERNAL_SERVER_ERROR);
+            ], RESTController::HTTP_INTERNAL_ERROR);
         }
     }
     
@@ -110,7 +110,7 @@ class Barang_masuk_api extends ApiController
             $this->response([
                 'status' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], RESTController::HTTP_INTERNAL_SERVER_ERROR);
+            ], RESTController::HTTP_INTERNAL_ERROR);
         }
     }
     
