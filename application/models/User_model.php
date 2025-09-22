@@ -30,6 +30,19 @@ class User_model extends CI_Model
         
     }
 
+    public function get_user_by_satker_role($id_satker, $id_role)
+    {
+        $this->db->select('user.*');
+        $this->db->from('user');
+        $this->db->join('user_role', 'user_role.id_user = user.id_user');
+        $this->db->where('user.id_satker', $id_satker);
+        $this->db->where('user_role.id_role', $id_role);
+
+        $query = $this->db->get();
+        return $query->row(); // kalau cuma satu signer
+        // return $query->result(); // kalau bisa lebih dari satu signer
+    }
+
 
 	
 
@@ -55,6 +68,11 @@ class User_model extends CI_Model
     public function tambah_user($data)
     {
         return $this->db->insert('user', $data);
+    }
+
+    public function assign_ruangan($data)
+    {
+        return $this->db->insert('ruangan_user', $data);
     }
 
     

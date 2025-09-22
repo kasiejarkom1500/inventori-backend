@@ -13,4 +13,15 @@ class Ruangan_model extends CI_Model
 
 		return $query->result_array();
 	}
+
+	public function get_all($kabupaten_id = null)
+	{
+		$this->db->select('*');
+		$this->db->from('admin_ruangan');
+		if ($kabupaten_id !== null) {
+			$this->db->where('id_satker', $kabupaten_id);
+		}
+		$query = $this->db->get();
+		return $query->result_array();
+	}
 }
