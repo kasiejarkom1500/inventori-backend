@@ -133,6 +133,10 @@ $route['api/add_user'] = 'User_api/add_user';
 $route['api/update_user'] = 'User_api/update_user';
 $route['api/hapus_user/(:num)'] = 'User_api/hapus_user/$1';
 
+$route['api/assign_ruangan'] = 'User_api/assign_ruangan';
+
+$route['api/list_ruangan/(:any)'] = 'Ruangan/ruangan_all/$1';
+
 //Dashboard
 $route['api/total_barang/(:any)'] = 'Dashboard_api/total_barang/$1';
 $route['api/total_stok/(:any)'] = 'Dashboard_api/total_stok/$1';

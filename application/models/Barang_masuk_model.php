@@ -114,12 +114,19 @@ class Barang_masuk_model extends CI_Model
 
 
     public function simpan($data)
-    {
+{
+    $this->db->insert('barang_masuk', $data);
 
-        $this->db->insert('barang_masuk', $data);
-
-        return $this->db->insert_id();
+    if ($this->db->affected_rows() <= 0) {
+        // kalau gagal insert, tampilkan error
+        log_message('error', 'DB Insert Error: ' . print_r($this->db->error(), true));
+        // var_dump($this->db->error()['message']);
+        // die;
+        return false;
     }
+
+    return $this->db->insert_id();
+}
 
     public function simpan_pembelian($data)
     {

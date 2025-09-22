@@ -37,6 +37,7 @@ class Barang_api extends ApiController
 
 
         $this->load->model('Barang_model');
+        $this->load->model('Barang_masuk_model');
         $this->load->helper('form');
         $this->load->helper('url');
         $this->load->config('rest');
@@ -350,75 +351,104 @@ class Barang_api extends ApiController
             try {
                 $spreadsheet = IOFactory::load($inputFileName);
             } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
-                $this->response([
+                return $this->response([
                     'status' => false,
                     'message' => 'Error loading file: ' . $e->getMessage()
                 ], RESTController::HTTP_INTERNAL_ERROR);
-                return;
             }
 
             $sheetData = $spreadsheet->getActiveSheet()->toArray();
 
-            // Extract Kd Barang column
-            $kd_barang = array_column($sheetData, 0);
+            // Data pembelian
+            $data_pembelian = array(
+                'id_satker'   => $this->decoded_token['id_satker'],
+                'no_kuitansi' => 'IMPORT-' . date('YmdH'),
+                'tgl_masuk'   => date('Y-m-d'),
+                'id_sumber'   => '2', // Sumber: 2 (Import)
+            );
 
-            // Check for duplicate values in the uploaded file
-            if (count($kd_barang) !== count(array_unique($kd_barang))) {
-                $this->response([
-                    'status' => false,
-                    'message' => 'Duplicate Kd Barang found in the uploaded file.'
-                ], RESTController::HTTP_BAD_REQUEST);
-                return;
-            }
+            // var_dump($sheetData);
+            // die;
+
+
+            $this->db->trans_start(); // mulai transaksi
+
+            $id_pembelian = $this->Barang_masuk_model->simpan_pembelian($data_pembelian);
+
+
 
             foreach ($sheetData as $key => $row) {
-                if ($key == 0) continue; // Skip the header row
-
-                // Check if kd_barang already exists in the database
-                if ($this->Barang_model->exists_kd_barang($row[0])) {
-                    $this->response([
-                        'status' => false,
-                        'message' => 'Kd Barang ' . $row[0] . ' already exists in the database.'
-                    ], RESTController::HTTP_CONFLICT);
-                    return;
-                }
+                if ($key == 0) continue; // skip header
 
                 $data_barang = array(
-                    'kd_barang' => $row[0],
-                    'nama_barang' => $row[1],
-                    'kategori' => $row[2],
-                    'satuan' => $row[3],
-                    'stok' => $row[4],
-                    'stok_dasar' => $row[5],
-                    'harga_satuan' => $row[6],
+                    'kd_subkategori' => $row[0],
+                    'kd_barang'      => $row[1],
+                    'kabupaten_id'   => $row[2],
+                    'nama_barang'    => $row[3],
+                    'kategori'       => $row[4],
+                    'satuan'         => $row[5],
+                    'stok'           => $row[6],
+                    'harga_satuan'   => $row[7],
+                    'stok_dasar'     => $row[8],
                 );
 
-                // Insert data into barang table
-                $this->Barang_model->insert_barang($data_barang);
+                // Insert barang
+                if (!$this->Barang_model->insert_barang($data_barang)) {
+                    $this->db->trans_rollback();
+                    return $this->response([
+                        'status' => false,
+                        'message' => 'Gagal insert barang pada baris ' . ($key + 1)
+                    ], RESTController::HTTP_INTERNAL_ERROR);
+                }
 
-                // Get the inserted id_barang
                 $id_barang = $this->db->insert_id();
 
-                // Insert data into harga_pengajuan table
-                $data_harga_pengajuan = array(
-                    'id_barang' => $id_barang,
-                    'harga_pengajuan' => 0
+                $data_barang_masuk = array(
+                    'tgl_masuk'       => date('Y-m-d'),
+                    'id_pembelian'    => $id_pembelian,
+                    'id_barang'       => $id_barang,
+                    'jumlah'          => $row[6],
+                    'harga'           => $row[7],
+                    'sisa_stok'       => $row[6],
+                    'current_stok'    => $row[6],
+                    'catatan'         => null
                 );
 
-                $this->Barang_model->insert_harga_pengajuan($data_harga_pengajuan);
+                $id_barang_masuk = $this->Barang_masuk_model->simpan($data_barang_masuk);
+                // var_dump($id_barang_masuk);
+                // die;
+
+                if (!$id_barang_masuk) {
+                    $this->db->trans_rollback();
+                    return $this->response([
+                        'status' => false,
+                        'message' => 'Gagal insert barang_masuk pada baris ' . ($key + 1)
+                    ], RESTController::HTTP_INTERNAL_ERROR);
+                }
+
             }
 
-            $this->response([
+            $this->db->trans_complete(); // commit/rollback otomatis
+
+            if ($this->db->trans_status() === false) {
+                return $this->response([
+                    'status' => false,
+                    'message' => 'Terjadi kesalahan saat import, semua perubahan dibatalkan.'
+                ], RESTController::HTTP_INTERNAL_ERROR);
+            }
+
+            return $this->response([
                 'status' => true,
-                'message' => 'Data has been successfully imported.'
+                'message' => 'Data berhasil diimport.'
             ], RESTController::HTTP_OK);
         } else {
-            $this->response([
+            return $this->response([
                 'status' => false,
                 'message' => 'Invalid file format.'
-            ], RESTController::HTTP_OK);
+            ], RESTController::HTTP_BAD_REQUEST);
         }
     }
+
 
     public function subkategori_get()
     {

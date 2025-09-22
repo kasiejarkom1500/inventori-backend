@@ -28,7 +28,7 @@ class Role_model extends CI_Model
         $query = $this->db->get();
         
         // $error = $this->db->error(); // untuk pesan error/ untuk kode error
-        // print_r($error);
+        // print_r($id_user);
         // die;
 
         

@@ -22,7 +22,7 @@ class Permintaan_barang_api extends ApiController
             exit(0); // Hentikan eksekusi lebih lanjut
         }
 
-
+        $this->load->model('Kabupaten_model');
         $this->load->model('Permintaan_barang_model');
         $this->load->model('Pengajuan_barang_model');
         $this->load->model('Barang_model');
@@ -67,11 +67,18 @@ class Permintaan_barang_api extends ApiController
 
         // $permintaan_barang = $this->Permintaan_barang_model->get_by_date($id_ruangan, $tanggal);
         $permintaan_barang = $this->Permintaan_barang_model->get_by_id_transaksi($id_transaksi, $id_ruangan, $tanggal);
+        $signerGudang = $this->User_model->get_user_by_satker_role($this->decoded_token['id_satker'],1);
+        $signerApprover = $this->User_model->get_user_by_satker_role($this->decoded_token['id_satker'],7);
+        $headerSurat = $this->Kabupaten_model->get_all($this->decoded_token['id_satker']);
+
 
         if ($permintaan_barang) {
             $this->response([
                 'status' => true,
-                'data' => $permintaan_barang
+                'data' => $permintaan_barang,
+                'signerGudang' => $signerGudang,
+                'signerApprover' => $signerApprover,
+                'headerSurat' => $headerSurat
             ], RESTController::HTTP_OK);
         } else {
             $this->response([

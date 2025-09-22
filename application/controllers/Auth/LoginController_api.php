@@ -54,7 +54,8 @@ class LoginController_api extends RestController
             $password = htmlspecialchars($this->post('password', TRUE));
 
             // Periksa login menggunakan model
-            $user = $this->cek_login($username, $password);
+            // $user = $this->cek_login($username, $password);
+            $user = $this->dummy_cek_login($username, $password);
 
 
             if ($user) {
@@ -81,6 +82,8 @@ class LoginController_api extends RestController
         $this->form_validation->set_rules('username', 'Username', 'trim|required');
         $this->form_validation->set_rules('password', 'Password', 'trim|required');
 
+        
+
         if ($this->form_validation->run() == FALSE) {
             $this->response([
                 'status' => FALSE,
@@ -90,7 +93,8 @@ class LoginController_api extends RestController
             $username = htmlspecialchars($this->post('username', TRUE));
             $password = htmlspecialchars($this->post('password', TRUE));
 
-            $user = $this->cek_login($username, $password);
+            // $user = $this->cek_login($username, $password);
+            $user = $this->dummy_cek_login($username, $password);
 
             if ($user) {
                 $token = generate_jwt($user);
@@ -212,7 +216,11 @@ class LoginController_api extends RestController
             }
         }
 
+        
         $user = $this->db->get_where('user', ['nip_lama' => $data_user->nip_lama_user])->row_array();
+        
+
+       
 
 
         // var_dump($user);
@@ -221,13 +229,16 @@ class LoginController_api extends RestController
         if (!$user) return false;
 
         $role = $this->Role_model->get_role_by_id($user['id_user']);
+        // var_dump($user['id_user']);
+        // die;
+
         if (!$role) return $this->response([
             'status' => 'Gagal',
             'message' => 'Role tidak ditemukan silahkan hubungi admin'
         ], RestController::HTTP_UNAUTHORIZED);
 
         $data_ruangan = null;
-        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0' || $role->id_role == '7') {
+        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0' || $role->id_role == '7' || $role->id_role == '1') {
             $data_ruangan = [];
             $ruangan = $this->Ruangan_model->get_ruangan($user['id_user']);
             //jika ruangan kosong maka tidak perlu diisi
@@ -256,8 +267,80 @@ class LoginController_api extends RestController
         if (!isset($role_map[$role_id])) return false;
 
         return [
-            'nama' => $data_user->fullname,
-            'username' => $data_user->username,
+            // 'nama' => $data_user->fullname,
+            // 'username' => $data_user->username,
+            'jabatan' => $user['jabatan'],
+            'id_user' => $user['id_user'],
+            'id_satker' => $user['id_satker'],
+            'data_ruangan' => $data_ruangan,
+            'role' => $role_map[$role_id]
+        ];;
+    }
+
+    private function dummy_cek_login($username, $password)
+    {
+        if($username == 'dummy-operator' && $password =='dummy-operator') {
+            $user = $this->db->get_where('user', ['nip_lama' => '340060082'])->row_array();
+        } elseif ($username == 'dummy-ketuatim' && $password == 'dummy-ketuatim') {
+            $user = $this->db->get_where('user', ['nip_lama' => '340060083'])->row_array();
+        } elseif ($username =='dummy-admingudang' && $password == 'dummy-admingudang') {
+            $user = $this->db->get_where('user', ['nip_lama' => '340060084'])->row_array();
+        } elseif ($username == 'dummy-ketuagudang' && $password == 'dummy-ketuagudang') {
+            $user = $this->db->get_where('user', ['nip_lama' => '340060085'])->row_array();
+        } elseif ($username == 'dummy-admin' && $password == 'dummy-admin') {
+            $user = $this->db->get_where('user', ['nip_lama' => '340060086'])->row_array();
+        }
+
+
+       
+
+
+        // var_dump($user);
+        // die;
+
+        if (!$user) return false;
+
+        $role = $this->Role_model->get_role_by_id($user['id_user']);
+        // var_dump($user['id_user']);
+        // die;
+
+        if (!$role) return $this->response([
+            'status' => 'Gagal',
+            'message' => 'Role tidak ditemukan silahkan hubungi admin'
+        ], RestController::HTTP_UNAUTHORIZED);
+
+        $data_ruangan = null;
+        if ($role->id_role == '4' || $role->id_role == '6' || $role->id_role == '0' || $role->id_role == '7' || $role->id_role == '1') {
+            $data_ruangan = [];
+            $ruangan = $this->Ruangan_model->get_ruangan($user['id_user']);
+            //jika ruangan kosong maka tidak perlu diisi
+            if ($ruangan) {
+                foreach ($ruangan as $item) {
+                    $data_ruangan[] = [
+                        'id_ruangan' => $item['id_ruangan'],
+                        'ruangan' => $item['ruangan']
+                    ];
+                }
+            }
+        }
+
+        $role_map = [
+            0 => 'admin',
+            1 => 'admin_gudang',
+            2 => 'admin_pengadaan',
+            3 => 'admin_pembelian',
+            4 => 'user',
+            5 => 'viewer',
+            6 => 'ketua_tim',
+            7 => 'ketua_gudang'
+        ];
+
+        $role_id = (int)$role->id_role;
+        if (!isset($role_map[$role_id])) return false;
+
+        return [
+            'nama' => $user['nama'],
+            'username' => $user['nama'],
             'jabatan' => $user['jabatan'],
             'id_user' => $user['id_user'],
             'id_satker' => $user['id_satker'],
