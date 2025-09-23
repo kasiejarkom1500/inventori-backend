@@ -74,7 +74,7 @@ class Permintaan_barang_model extends CI_Model
                 current_stok,
                 ruangan.ruangan AS uraian,
                 barang.kategori,
-                keluar.created_at AS created_at
+                keluar.updated_at AS created_at
             FROM 
                 permintaan AS keluar
             JOIN
@@ -88,7 +88,7 @@ class Permintaan_barang_model extends CI_Model
             WHERE
                 keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved' AND keluar.jumlah_approved > 0
             GROUP BY 
-                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori, keluar.created_at
+                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori, keluar.updated_at
         ) AS union_result
         ORDER BY created_at ASC";
         $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id));

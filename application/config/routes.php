@@ -28,7 +28,7 @@ $route['translate_uri_dashes']  = FALSE;
 /* =======================
    AUTH
 ======================= */
-$route['api/login']              = 'Auth/LoginController_api/newlogin';
+$route['api/login']              = 'Auth/LoginController_api/login';
 
 /* =======================
    BARANG
