@@ -2,188 +2,122 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /*
-| -------------------------------------------------------------------------
+|--------------------------------------------------------------------------
 | URI ROUTING
-| -------------------------------------------------------------------------
+|--------------------------------------------------------------------------
 | This file lets you re-map URI requests to specific controller functions.
-|
 | Typically there is a one-to-one relationship between a URL string
-| and its corresponding controller class/method. The segments in a
-| URL normally follow this pattern:
+| and its corresponding controller class/method.
 |
-|	example.com/class/method/id/
+| example.com/class/method/id/
 |
-| In some instances, however, you may want to remap this relationship
-| so that a different class/function is called than the one
-| corresponding to the URL.
+| Reserved routes:
+|   $route['default_controller'] = 'welcome';
+|   $route['404_override'] = 'errors/page_missing';
+|   $route['translate_uri_dashes'] = FALSE;
 |
-| Please see the user guide for complete details:
-|
-|	https://codeigniter.com/userguide3/general/routing.html
-|
-| -------------------------------------------------------------------------
-| RESERVED ROUTES
-| -------------------------------------------------------------------------
-|
-| There are three reserved routes:
-|
-|	$route['default_controller'] = 'welcome';
-|
-| This route indicates which controller class should be loaded if the
-| URI contains no data. In the above example, the "welcome" class
-| would be loaded.
-|
-|	$route['404_override'] = 'errors/page_missing';
-|
-| This route will tell the Router which controller/method to use if those
-| provided in the URL cannot be matched to a valid route.
-|
-|	$route['translate_uri_dashes'] = FALSE;
-|
-| This is not exactly a route, but allows you to automatically route
-| controller and method names that contain dashes. '-' isn't a valid
-| class or method name character, so it requires translation.
-| When you set this option to TRUE, it will replace ALL dashes in the
-| controller and method URI segments.
-|
-| Examples:	my-controller/index	-> my_controller/index
-|		my-controller/my-method	-> my_controller/my_method
+| For complete details, see:
+| https://codeigniter.com/userguide3/general/routing.html
+|--------------------------------------------------------------------------
 */
 
-$route['default_controller'] = 'welcome';
-$route['404_override'] = '';
-$route['translate_uri_dashes'] = FALSE;
-$route['change-password'] = 'Auth/ChangePasswordController';
-$route['reset_password/(:any)'] = 'Auth/ChangePasswordController/index/$1';
+$route['default_controller']    = 'welcome';
+$route['404_override']          = '';
+$route['translate_uri_dashes']  = FALSE;
 
-//GET routes
+/* =======================
+   AUTH
+======================= */
+$route['api/login']              = 'Auth/LoginController_api/newlogin';
 
-//Routes Barang
-$route['api/get_barang_atk'] = 'Barang_api/all_barang';
+/* =======================
+   BARANG
+======================= */
+$route['api/get_barang_atk']         = 'Barang_api/all_barang';
+$route['api/get_barang_ark']         = 'Barang_api/all_barang_ark';
+$route['api/get_barang_all']         = 'Barang_api/barang';
+$route['api/get_barang_id/(:num)']   = 'Barang_api/barang_id/$1';
 
-$route['api/get_barang_ark'] = 'Barang_api/all_barang_ark';
+$route['api/insert_barang']          = 'Barang_api/insert_barang';
+$route['api/hapus_barang/(:num)']    = 'Barang_api/hapus_barang/$1';
+$route['api/ubah_barang/(:num)']     = 'Barang_api/ubah/$1';
 
-$route['api/get_barang_all'] = 'Barang_api/barang';
+$route['api/import_excel']           = 'Barang_api/import_excel';
+$route['api/update_harga_pengajuan'] = 'Barang_api/update_harga_pengajuan';
+$route['api/get_subkategori']        = 'Barang_api/subkategori';
+$route['api/get_baso']               = 'Barang_api/barang_BASO';
 
-$route['api/get_barang_id/(:num)'] = 'Barang_api/barang_id/$1';
+/* =======================
+   PERMINTAAN BARANG
+======================= */
+$route['api/get_transaksi_permintaan']                     = 'Permintaan_barang_api/transaksi_permintaan';
+$route['api/get_detail_permintaan/(:num)/(:any)/(:num)']    = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
+$route['api/cetak_permintaan/(:num)/(:any)']                = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
+$route['api/update_status']                                = 'Permintaan_barang_api/update_status_admin';
+$route['api/tambah_permintaan']                            = 'Permintaan_barang_api/simpan';
+$route['api/approve_transaksi/(:num)/(:num)']              = 'Permintaan_barang_api/approve_transaksi/$1/$2';
+$route['api/approve_gudang/(:num)/(:num)']                 = 'Permintaan_barang_api/approve_gudang/$1/$2';
 
-$route['api/get_barang_masuk'] = 'Barang_masuk_api/all_barang_masuk';
-
-$route['api/get_transaksi_permintaan'] = 'Permintaan_barang_api/transaksi_permintaan';
-
-$route['api/get_detail_permintaan/(:num)/(:any)/(:num)'] = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
-
-$route['api/cetak_permintaan/(:num)/(:any)'] = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
-
-$route['api/update_status'] = 'Permintaan_barang_api/update_status_admin';
-
-$route['api/tambah_permintaan'] = 'Permintaan_barang_api/simpan';
-
-//Pengajuan
-$route['api/get_transaksi_pengajuan'] = 'Pengajuan_barang_api/transaksi_pengajuan';
-
-$route['api/get_detail_pengajuan/(:num)/(:any)'] = 'Pengajuan_barang_api/pengajuan_detail/$1/$2';
-
-$route['api/update_status_pengajuan'] = 'Pengajuan_barang_api/update_status';
-
-$route['api/tambah_pengajuan'] = 'Pengajuan_barang_api/simpan';
+/* =======================
+   PENGAJUAN BARANG
+======================= */
+$route['api/get_transaksi_pengajuan']             = 'Pengajuan_barang_api/transaksi_pengajuan';
+$route['api/get_detail_pengajuan/(:num)/(:any)']  = 'Pengajuan_barang_api/pengajuan_detail/$1/$2';
+$route['api/update_status_pengajuan']             = 'Pengajuan_barang_api/update_status';
+$route['api/tambah_pengajuan']                    = 'Pengajuan_barang_api/simpan';
 
 $route['api/filter_pengajuan'] = 'Laporan_pengajuan_api/filter_pengajuan';
+$route['api/cetak_kak']        = 'Laporan_pengajuan_api/cetak_kak';
 
-$route['api/cetak_kak'] = 'Laporan_pengajuan_api/cetak_kak';
+/* =======================
+   PEMBELIAN / BARANG MASUK
+======================= */
+$route['api/get_barang_masuk']         = 'Barang_masuk_api/all_barang_masuk';
+$route['api/tambah_pembelian']         = 'Barang_masuk_api/simpan';
+$route['api/get_pembelian']            = 'Barang_masuk_api/all_pembelian';
+$route['api/detail_pembelian/(:num)']  = 'Barang_masuk_api/detail_pembelian/$1';
+$route['api/get_sumber']               = 'Sumber/sumber_all';
 
-
-//POST
-$route['api/insert_barang'] = 'Barang_api/insert_barang';
-
-//Delete
-$route['api/hapus_barang/(:num)'] = 'Barang_api/hapus_barang/$1';
-
-//Update
-//Delete
-$route['api/ubah_barang/(:num)'] = 'Barang_api/ubah/$1';
-
-//Import_Excel_Barang
-$route['api/import_excel'] = 'Barang_api/import_excel';
-
-//Update Harga Pengajuan
-$route['api/update_harga_pengajuan'] = 'Barang_api/update_harga_pengajuan';
-
-
-//POST routes
-$route['api/login'] = 'Auth/LoginController_api/newlogin';
-
-//Kartu Kendali
-$route['api/generate'] = 'Kartukendali/generate';
-
-//Input Pembelian
-$route['api/tambah_pembelian'] = 'Barang_masuk_api/simpan';
-$route['api/get_pembelian'] = 'Barang_masuk_api/all_pembelian';
-
-$route['api/detail_pembelian/(:num)'] = 'Barang_masuk_api/detail_pembelian/$1';
-
-$route['api/get_sumber'] = 'Sumber/sumber_all';
-
+/* =======================
+   KARTU KENDALI
+======================= */
+$route['api/generate']       = 'Kartukendali/generate';
 $route['api/summary_karken'] = 'Kartukendali/summary';
 
+/* =======================
+   USER & RUANGAN
+======================= */
+$route['api/get_users']              = 'User_api/all_user';
+$route['api/add_user']               = 'User_api/add_user';
+$route['api/update_user']            = 'User_api/update_user';
+$route['api/hapus_user/(:num)']      = 'User_api/hapus_user/$1';
+$route['api/assign_ruangan']         = 'User_api/assign_ruangan';
+$route['api/list_ruangan/(:any)']    = 'Ruangan/ruangan_all/$1';
 
-//User
-$route['api/get_users'] = 'User_api/all_user';
-$route['api/add_user'] = 'User_api/add_user';
-$route['api/update_user'] = 'User_api/update_user';
-$route['api/hapus_user/(:num)'] = 'User_api/hapus_user/$1';
+/* =======================
+   DASHBOARD
+======================= */
+$route['api/total_barang/(:any)']                  = 'Dashboard_api/total_barang/$1';
+$route['api/total_stok/(:any)']                    = 'Dashboard_api/total_stok/$1';
+$route['api/dashboard_permintaan/(:any)']          = 'Dashboard_api/jumlah_permintaan/$1';
+$route['api/total_pemakaian_bulanan/(:any)/(:any)']= 'Dashboard_api/total_pemakaian_bulanan/$1/$2';
+$route['api/pemakaian_ruangan/(:any)']             = 'Dashboard_api/total_pemakaian_bulanan_ruangan/$1';
+$route['api/barang_terbanyak/(:any)']              = 'Dashboard_api/barang_terbanyak/$1';
+$route['api/barang_stok_minimal']                 = 'Dashboard_api/barang_stok_minimal';
+$route['api/pembelian_bulan/(:any)']              = 'Dashboard_api/pembelian_bulan/$1';
+$route['api/pembelian_detail/(:any)']             = 'Dashboard_api/pembelian_detail/$1';
 
-$route['api/assign_ruangan'] = 'User_api/assign_ruangan';
+/* =======================
+   POK / PROGRAM / KEGIATAN
+======================= */
+$route['api/program']          = 'Pok_api/program';
+$route['api/kegiatan/(:any)']  = 'Pok_api/kegiatan/$1';
+$route['api/kro/(:any)']       = 'Pok_api/kro/$1';
+$route['api/ro/(:any)']        = 'Pok_api/ro/$1';
+$route['api/komponen/(:any)']  = 'Pok_api/komponen/$1';
+$route['api/gabungan_pok']     = 'Pok_api/gabungan_pok';
 
-$route['api/list_ruangan/(:any)'] = 'Ruangan/ruangan_all/$1';
-
-//Dashboard
-$route['api/total_barang/(:any)'] = 'Dashboard_api/total_barang/$1';
-$route['api/total_stok/(:any)'] = 'Dashboard_api/total_stok/$1';
-$route['api/dashboard_permintaan/(:any)'] = 'Dashboard_api/jumlah_permintaan/$1';
-//routes pemakaian bulanan
-$route['api/total_pemakaian_bulanan/(:any)/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan/$1/$2';
-
-//routes pemakaian bulanan ruangan
-$route['api/pemakaian_ruangan/(:any)'] = 'Dashboard_api/total_pemakaian_bulanan_ruangan/$1';
-//routes barang terbanyak
-$route['api/barang_terbanyak/(:any)'] = 'Dashboard_api/barang_terbanyak/$1';
-//routes barang stok minimal
-$route['api/barang_stok_minimal'] = 'Dashboard_api/barang_stok_minimal';
-//route ambil subkategori
-$route['api/get_subkategori'] = 'Barang_api/subkategori';
-//route ambil kabupaten
+/* =======================
+   LAINNYA
+======================= */
 $route['api/get_kabupaten'] = 'Kabupaten/kabupaten_all';
-
-//routes pembelian bulan
-$route['api/pembelian_bulan/(:any)'] = 'Dashboard_api/pembelian_bulan/$1';
-
-//routes pembelian detail
-$route['api/pembelian_detail/(:any)'] = 'Dashboard_api/pembelian_detail/$1';
-
-$route['api/program'] = 'Pok_api/program';
-
-//routes kegiatan
-// $routes['api/kegiatan/(:any)'] = 'Pok_api/kegiatan/$1';
-
-$route['api/kegiatan/(:any)'] = 'Pok_api/kegiatan/$1';
-
-//routes kro
-$route['api/kro/(:any)'] = 'Pok_api/kro/$1';
-//routes ro
-$route['api/ro/(:any)'] = 'Pok_api/ro/$1';
-//routes komponen
-$route['api/komponen/(:any)'] = 'Pok_api/komponen/$1';
-//routes gabungan pok
-$route['api/gabungan_pok'] = 'Pok_api/gabungan_pok';
-
-//route approve transaksi permintaan
-$route['api/approve_transaksi/(:num)/(:num)'] = 'Permintaan_barang_api/approve_transaksi/$1/$2';
-
-//route ambil data baso
-$route['api/get_baso'] = 'Barang_api/barang_BASO';
-
-//route approve gudang
-$route['api/approve_gudang/(:num)/(:num)'] = 'Permintaan_barang_api/approve_gudang/$1/$2';
-
-
