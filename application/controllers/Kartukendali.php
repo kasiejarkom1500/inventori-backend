@@ -2,8 +2,6 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 require_once APPPATH . 'core/ApiController.php';
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use chriskacerguis\RestServer\RestController;
 
 class KartuKendali extends ApiController
@@ -45,8 +43,7 @@ class KartuKendali extends ApiController
 
         $data_keluar = $this->Permintaan_barang_model->karken_data($tgl_mulai, $tgl_selesai, $this->decoded_token['id_satker']);
 
-        // var_dump($data_keluar);
-        // die;
+     
         // Proses data untuk dikelompokkan
         $groupedData = [];
         foreach ($data_keluar as $item) {
@@ -90,42 +87,6 @@ class KartuKendali extends ApiController
             'data' => $groupedData
         ], RestController::HTTP_OK);
 
-
-        // $url = [];
-        // foreach ($groupedData as $pdfData) {
-        //     $pdfData['logo'] = base_url('/img/logo.png');
-
-        //     $html = $this->load->view('kartu_kendali', $pdfData, true);
-
-        //     // Aktifkan remote image
-        //     $options = new Options();
-        //     $options->set('isRemoteEnabled', true);
-
-        //     // Inisialisasi Dompdf dengan opsi
-        //     $dompdf = new Dompdf($options);
-
-        //     // $dompdf = new Dompdf();
-        //     $dompdf->loadHtml($html);
-        //     $dompdf->setPaper('A4', 'portrait');
-        //     $dompdf->render();
-
-        //     // Save the PDF temporarily
-        //     $output = $dompdf->output();
-        //     $name = 'downloads/Kartu_Kendali_' . $pdfData['id_barang'] . '.pdf';
-        //     $filePath = FCPATH . $name;
-        //     file_put_contents($filePath, $output);
-
-        //     $url[] = base_url($name);
-        // }
-
-
-
-        // // Return the file as a response
-        // return $this->response([
-        //     'status' => true,
-        //     'message' => 'PDF generated successfully',
-        //     'download_url' => $url
-        // ], RestController::HTTP_OK);
     }
 
 

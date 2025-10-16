@@ -64,7 +64,7 @@ class Pengajuan_barang_model extends CI_Model
 
 	public function get_by_date($id_ruangan, $tanggal)
 	{
-		$this->db->select('id_pengajuan, tanggal,id_ruangan, kd_barang, kd_subkategori, harga_pengajuan as harga_satuan ,nama_barang, kategori, satuan, jumlah, status, temp');
+		$this->db->select('id_pengajuan, tanggal,id_ruangan, kd_barang, kd_subkategori,kd_program, kd_kegiatan, kd_kro, kd_ro, kd_komponen,harga_pengajuan as harga_satuan ,nama_barang, kategori, satuan, jumlah, status, temp');
 		$this->db->from('pengajuan');
 		$this->db->join('barang', 'pengajuan.id_barang = barang.id_barang');
 		$this->db->where('id_ruangan', $id_ruangan);

@@ -133,15 +133,23 @@ class Pengajuan_barang_api extends ApiController
                 
                 $this->Barang_model->ubah_api($barang['id_barang'],$barang);
                 
-                
-    
-                //Kurangi stok barang
             }
-            
-            $this->Pengajuan_barang_model->update_pengajuan($id_pengajuan, ['total_harga' => $item['harga_satuan']*$jumlah, 'harga_pengajuan' => $item['harga_satuan']]);
+
+            $update_data_pengajuan = [
+                'total_harga' => $item['harga_satuan']*$jumlah,
+                'harga_pengajuan' => $item['harga_satuan'],
+                'status' => $status,
+                'kd_program' => $item['kd_program'],
+                'kd_kegiatan' => $item['kd_kegiatan'],
+                'kd_kro' => $item['kd_kro'],
+                'kd_ro' => $item['kd_ro'],
+                'kd_komponen' => $item['kd_komponen'],
+            ];
+
+            $this->Pengajuan_barang_model->update_pengajuan($id_pengajuan, $update_data_pengajuan);
             
             // Update status permintaan
-            $this->Pengajuan_barang_model->update_status($id_pengajuan, $status, $jumlah);
+            // $this->Pengajuan_barang_model->update_status($id_pengajuan, $status, $jumlah);
         }
     
         // Response success

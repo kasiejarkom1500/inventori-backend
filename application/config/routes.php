@@ -51,11 +51,11 @@ $route['api/get_baso']               = 'Barang_api/barang_BASO';
    PERMINTAAN BARANG
 ======================= */
 $route['api/get_transaksi_permintaan']                     = 'Permintaan_barang_api/transaksi_permintaan';
-$route['api/get_detail_permintaan/(:num)/(:any)/(:num)']    = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
-$route['api/cetak_permintaan/(:num)/(:any)']                = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
+$route['api/get_detail_permintaan/(:num)/(:any)/(:num)']   = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
+$route['api/cetak_permintaan/(:num)/(:any)']               = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
 $route['api/update_status']                                = 'Permintaan_barang_api/update_status_admin';
 $route['api/tambah_permintaan']                            = 'Permintaan_barang_api/simpan';
-$route['api/approve_transaksi/(:num)/(:num)']              = 'Permintaan_barang_api/approve_transaksi/$1/$2';
+$route['api/approve_transaksi/(:num)/(:num)']              = 'Permintaan_barang_api/approve_transaksi/$1/$2'; //stok berkurang
 $route['api/approve_gudang/(:num)/(:num)']                 = 'Permintaan_barang_api/approve_gudang/$1/$2';
 
 /* =======================
@@ -73,7 +73,7 @@ $route['api/cetak_kak']        = 'Laporan_pengajuan_api/cetak_kak';
    PEMBELIAN / BARANG MASUK
 ======================= */
 $route['api/get_barang_masuk']         = 'Barang_masuk_api/all_barang_masuk';
-$route['api/tambah_pembelian']         = 'Barang_masuk_api/simpan';
+$route['api/tambah_pembelian']         = 'Barang_masuk_api/simpan'; //stok bertambah
 $route['api/get_pembelian']            = 'Barang_masuk_api/all_pembelian';
 $route['api/detail_pembelian/(:num)']  = 'Barang_masuk_api/detail_pembelian/$1';
 $route['api/get_sumber']               = 'Sumber/sumber_all';

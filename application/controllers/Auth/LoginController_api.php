@@ -220,8 +220,8 @@ class LoginController_api extends RestController
         if (!isset($role_map[$role_id])) return false;
 
         return [
-            // 'nama' => $data_user->fullname,
-            // 'username' => $data_user->username,
+            'nama' => $data_user->fullname,
+            'username' => $data_user->username,
             'jabatan' => $user['jabatan'],
             'id_user' => $user['id_user'],
             'id_satker' => $user['id_satker'],

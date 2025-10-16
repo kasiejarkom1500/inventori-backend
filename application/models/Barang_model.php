@@ -24,14 +24,14 @@ class Barang_model extends CI_Model
 
 	public function baso_data($kabupaten_id = null)
 	{
-		$this->db->select('barang.id_barang,barang.nama_barang,barang.satuan,barang.stok,barang.harga_satuan,harga_data.total_harga');
+		$this->db->select('barang.id_barang,barang.nama_barang,barang.satuan,harga_data.stok,harga_data.harga_satuan,harga_data.total_harga');
 		$this->db->from('barang');
 
 		// Join subquery stok
 		// $this->db->join("(SELECT id_barang, SUM(sisa_stok) AS stok FROM barang_masuk WHERE temp = 0 GROUP BY id_barang) AS stok_data", 'barang.id_barang = stok_data.id_barang', 'left');
 
 		// Join subquery total_harga
-		$this->db->join("(SELECT id_barang, SUM(harga * sisa_stok) AS total_harga FROM barang_masuk GROUP BY id_barang) AS harga_data", 'barang.id_barang = harga_data.id_barang', 'left');
+		$this->db->join("(SELECT id_barang, catatan ,sisa_stok as stok,harga as harga_satuan,SUM(harga * sisa_stok) AS total_harga FROM barang_masuk GROUP BY id_barang,catatan,sisa_stok,harga) AS harga_data", 'barang.id_barang = harga_data.id_barang', 'left');
 
 		// Optional filter kabupaten_id
 		if ($kabupaten_id !== null) {
@@ -371,7 +371,7 @@ class Barang_model extends CI_Model
 		return $max_value = $result->kd_barang;
 	}
 
-	public function get_next_kode_barang($kd_subkategori)
+	public function get_next_kode_barang_old($kd_subkategori)
 	{
 		// Ambil kd_barang terbesar yang sesuai dengan subkategori
 		$this->db->select('kd_barang');
@@ -397,6 +397,37 @@ class Barang_model extends CI_Model
 		// Gabungkan jadi format baru
 		return $kd_subkategori . '.' . $next_number;
 	}
+
+	public function get_next_kode_barang($kd_subkategori)
+	{
+		// Ambil kd_barang terbesar yang diawali dengan kd_subkategori
+		$this->db->select('kd_barang');
+		$this->db->like('kd_barang', $kd_subkategori, 'after'); // kd_barang LIKE 'kd_subkategori%'
+		$this->db->order_by('kd_barang', 'DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('barang');
+
+		if ($query->num_rows() > 0) {
+			$last_kode = $query->row()->kd_barang;
+
+			// Ambil bagian setelah subkategori (misalnya 000003)
+			$last_number_part = substr($last_kode, strlen($kd_subkategori));
+
+			// Konversi ke integer lalu tambah 1
+			$next_number = intval($last_number_part) + 1;
+
+			// Format ulang agar tetap 6 digit (atau sesuaikan dengan panjang yang kamu pakai)
+			$formatted_number = str_pad($next_number, strlen($last_number_part), '0', STR_PAD_LEFT);
+		} else {
+			// Jika belum ada barang untuk subkategori tersebut
+			$formatted_number = '000001'; // awal dari 1
+		}
+
+		// Gabungkan kembali
+		return $kd_subkategori . $formatted_number;
+	}
+
+
 
 
 	public function update_harga_pengajuan($harga_pengajuan_input)
