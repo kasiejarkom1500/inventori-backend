@@ -24,6 +24,7 @@ class User_api extends ApiController
 
         $this->load->model('User_model');
         $this->load->model('ruangan_model');
+        $this->load->model('Role_model');
         $this->load->helper('form');
         $this->load->helper('url');
         $this->load->config('rest');
@@ -33,6 +34,18 @@ class User_api extends ApiController
     {
 
         $users_data = $this->User_model->tampil_data();
+
+       
+
+        foreach ($users_data as $key => $user) {
+            $ruangan = $this->ruangan_model->get_ruangan($user['id_user']);
+            $users_data[$key]['ruangan'] = $ruangan;
+            $role = $this->Role_model->get_multi_role_by_id($user['id_user']);
+            $users_data[$key]['role'] = $role;
+        }
+
+        // var_dump($users_data);
+        // die;
 
         if ($users_data) {
             $this->response([

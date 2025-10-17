@@ -35,6 +35,22 @@ class Role_model extends CI_Model
         return $query->row();
     }
 
+    public function get_multi_role_by_id($id_user) {
+        // Get user's data based on username
+        $this->db->select('id_user,user_role.id_role,nama_role');
+        $this->db->from('user_role');
+        $this->db->join('mst_role','mst_role.id_role = user_role.id_role');
+        $this->db->where('id_user', $id_user);
+        $query = $this->db->get();
+        
+        // $error = $this->db->error(); // untuk pesan error/ untuk kode error
+        // print_r($id_user);
+        // die;
+
+        
+        return $query->result_array();
+    }
+
 	public function get_user_by_username_all($username) {
         // Get user's data based on username
         $this->db->select('*');
