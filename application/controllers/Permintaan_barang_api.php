@@ -766,8 +766,10 @@ class Permintaan_barang_api extends ApiController
                     }
                 }
 
-                $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
-
+                if (!$this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved)) {
+                    $this->db->trans_rollback();
+                    return $this->response_error("Gagal mengurangi stok barang {$barang['nama_barang']}.");
+                }
 
                 $update_data = [
                     'jumlah_approved' => $jumlah_approved,
@@ -790,7 +792,6 @@ class Permintaan_barang_api extends ApiController
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Rejected') {
                 $update_data = ['jumlah_approved' => $item['jumlah_permintaan'], 'status' => 'Pending'];
                 $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
-
             }
         }
 

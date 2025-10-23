@@ -326,9 +326,15 @@ class Barang_model extends CI_Model
 
 	public function kurangi_stok_barang($id_barang, $jumlah)
 	{
-		$this->db->set('stok', 'stok - ' . $jumlah, FALSE);
+		$barang = $this->db->get_where('barang', ['id_barang' => $id_barang])->row();
+		if (!$barang) return false;
+		if ($barang->stok < $jumlah) return false;
+
+		$this->db->set('stok', 'stok - ' . (int)$jumlah, FALSE);
 		$this->db->where('id_barang', $id_barang);
 		$this->db->update('barang');
+
+		return $this->db->affected_rows() > 0;
 	}
 
 	public function tambah_stok_barang($id_barang, $jumlah)
