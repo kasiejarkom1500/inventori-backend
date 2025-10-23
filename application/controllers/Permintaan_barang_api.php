@@ -400,46 +400,46 @@ class Permintaan_barang_api extends ApiController
 
         $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
 
-        // Kurangi stok FIFO (sama seperti handle_approved)
-        $stok_masuk = $this->Barang_masuk_model->get_stok_masuk_fifo($id_barang);
-        $sisa = $jumlah_approved;
+        // // Kurangi stok FIFO (sama seperti handle_approved)
+        // $stok_masuk = $this->Barang_masuk_model->get_stok_masuk_fifo($id_barang);
+        // $sisa = $jumlah_approved;
 
-        foreach ($stok_masuk as $stok) {
-            if ($sisa <= 0) break;
+        // foreach ($stok_masuk as $stok) {
+        //     if ($sisa <= 0) break;
 
-            $id_masuk = $stok['id_barang_masuk'];
-            $tersedia = $stok['sisa_stok'];
+        //     $id_masuk = $stok['id_barang_masuk'];
+        //     $tersedia = $stok['sisa_stok'];
 
-            if ($tersedia == 0) continue;
+        //     if ($tersedia == 0) continue;
 
-            $ambil = min($sisa, $tersedia);
-            $sisa -= $ambil;
+        //     $ambil = min($sisa, $tersedia);
+        //     $sisa -= $ambil;
 
-            if (!$this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $ambil)) {
-                $this->db->trans_rollback();
-                return $this->response_error('Gagal mengurangi stok barang masuk.');
-            }
+        //     if (!$this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $ambil)) {
+        //         $this->db->trans_rollback();
+        //         return $this->response_error('Gagal mengurangi stok barang masuk.');
+        //     }
 
-            if (!$this->Permintaan_barang_model->catat_keluar_fifo([
-                'id_permintaan' => $id_permintaan,
-                'id_barang_masuk' => $id_masuk,
-                'jumlah_keluar' => $ambil,
-                'harga_satuan' => $stok['harga'],
-            ])) {
-                $this->db->trans_rollback();
-                return $this->response_error('Gagal mencatat transaksi keluar FIFO.');
-            }
-        }
+        //     if (!$this->Permintaan_barang_model->catat_keluar_fifo([
+        //         'id_permintaan' => $id_permintaan,
+        //         'id_barang_masuk' => $id_masuk,
+        //         'jumlah_keluar' => $ambil,
+        //         'harga_satuan' => $stok['harga'],
+        //     ])) {
+        //         $this->db->trans_rollback();
+        //         return $this->response_error('Gagal mencatat transaksi keluar FIFO.');
+        //     }
+        // }
 
-        $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
-        $updated_barang = $this->Barang_model->get_id($id_barang);
+        // $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
+        // $updated_barang = $this->Barang_model->get_id($id_barang);
 
-        if ($this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok'])) {
-            $this->db->trans_commit();
-        } else {
-            $this->db->trans_rollback();
-            return $this->response_error('Gagal menyimpan catatan stok akhir.');
-        }
+        // if ($this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok'])) {
+        $this->db->trans_commit();
+        // } else {
+        //     $this->db->trans_rollback();
+        //     return $this->response_error('Gagal menyimpan catatan stok akhir.');
+        // }
     }
 
     // ------------------ ROLLBACK HANDLERS ------------------
@@ -710,6 +710,9 @@ class Permintaan_barang_api extends ApiController
             }
 
             if ($item['status'] === 'Approved Gudang') {
+
+                $this->db->trans_begin();
+
                 $jumlah_permintaan = $permintaan['jumlah'];
                 $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
                 $barang = $this->Barang_model->get_id($id_barang);
@@ -732,6 +735,40 @@ class Permintaan_barang_api extends ApiController
                     $this->Barang_model->ubah_api($barang['id_barang'], $barang);
                 }
 
+                // Kurangi stok FIFO (sama seperti handle_approved)
+                $stok_masuk = $this->Barang_masuk_model->get_stok_masuk_fifo($id_barang);
+                $sisa = $jumlah_approved;
+
+                foreach ($stok_masuk as $stok) {
+                    if ($sisa <= 0) break;
+
+                    $id_masuk = $stok['id_barang_masuk'];
+                    $tersedia = $stok['sisa_stok'];
+
+                    if ($tersedia == 0) continue;
+
+                    $ambil = min($sisa, $tersedia);
+                    $sisa -= $ambil;
+
+                    if (!$this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $ambil)) {
+                        $this->db->trans_rollback();
+                        return $this->response_error('Gagal mengurangi stok barang masuk.');
+                    }
+
+                    if (!$this->Permintaan_barang_model->catat_keluar_fifo([
+                        'id_permintaan' => $id_permintaan,
+                        'id_barang_masuk' => $id_masuk,
+                        'jumlah_keluar' => $ambil,
+                        'harga_satuan' => $stok['harga'],
+                    ])) {
+                        $this->db->trans_rollback();
+                        return $this->response_error('Gagal mencatat transaksi keluar FIFO.');
+                    }
+                }
+
+                $this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved);
+
+
                 $update_data = [
                     'jumlah_approved' => $jumlah_approved,
                     'status' => 'Approved Gudang',
@@ -739,14 +776,21 @@ class Permintaan_barang_api extends ApiController
                 ];
 
                 $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+
+                $this->db->trans_commit();
             } elseif ($item['status'] === 'Rejected' && $permintaan['status'] === 'Approved Gudang') {
-                $update_data = ['jumlah_approved' => 0, 'status' => 'Rejected', 'is_buat_pengajuan' => false];
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+                // $update_data = ['jumlah_approved' => 0, 'status' => 'Rejected', 'is_buat_pengajuan' => false];
+                // $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+                $this->handle_rejected_from_approved($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Approved Gudang') {
                 $update_data = ['jumlah_approved' => $permintaan['jumlah_approved'], 'status' => 'Pending', 'is_buat_pengajuan' => false];
                 $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
             } elseif ($item['status'] === 'Rejected' && $permintaan['status'] === 'Pending') {
                 $this->handle_rejected_from_pending($item, $permintaan);
+            } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Rejected') {
+                $update_data = ['jumlah_approved' => $item['jumlah_permintaan'], 'status' => 'Pending'];
+                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+
             }
         }
 
