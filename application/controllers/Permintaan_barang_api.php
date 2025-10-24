@@ -351,7 +351,10 @@ class Permintaan_barang_api extends ApiController
         $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
         $barang = $this->Barang_model->get_id($id_barang);
 
-        $update_data = ['status' => 'Approved'];
+        if ($item['status'] === 'Approved Gudang') {
+            $update_data = ['status' => 'Approved'];
+        }
+        
 
         if (!empty($item['is_buat_pengajuan'])) {
             $jumlah_belum_dipenuhi = $permintaan['jumlah'] - $jumlah_approved;
@@ -750,6 +753,7 @@ class Permintaan_barang_api extends ApiController
                     $ambil = min($sisa, $tersedia);
                     $sisa -= $ambil;
 
+
                     if (!$this->Barang_masuk_model->kurangi_barang_masuk($id_masuk, $ambil)) {
                         $this->db->trans_rollback();
                         return $this->response_error('Gagal mengurangi stok barang masuk.');
@@ -766,7 +770,7 @@ class Permintaan_barang_api extends ApiController
                     }
                 }
 
-                if (!$this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved)) {
+                if (!$this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved) && $jumlah_approved > 0) {
                     $this->db->trans_rollback();
                     return $this->response_error("Gagal mengurangi stok barang {$barang['nama_barang']}.");
                 }
@@ -790,7 +794,7 @@ class Permintaan_barang_api extends ApiController
             } elseif ($item['status'] === 'Rejected' && $permintaan['status'] === 'Pending') {
                 $this->handle_rejected_from_pending($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Rejected') {
-                $update_data = ['jumlah_approved' => $item['jumlah_permintaan'], 'status' => 'Pending'];
+                $update_data = ['jumlah_approved' => $item['jumlah'], 'status' => 'Pending'];
                 $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
             }
         }
