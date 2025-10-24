@@ -120,7 +120,7 @@ class Laporan_pengajuan_api extends ApiController
 
 
 
-        if ($data_pengajuan) {
+        if (!empty($data_pengajuan)) {
             $this->response([
                 'status' => 'Berhasil',
                 'data' => $data

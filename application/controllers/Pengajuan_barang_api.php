@@ -139,11 +139,11 @@ class Pengajuan_barang_api extends ApiController
                 'total_harga' => $item['harga_satuan']*$jumlah,
                 'harga_pengajuan' => $item['harga_satuan'],
                 'status' => $status,
-                'kd_program' => $item['kd_program'],
-                'kd_kegiatan' => $item['kd_kegiatan'],
-                'kd_kro' => $item['kd_kro'],
-                'kd_ro' => $item['kd_ro'],
-                'kd_komponen' => $item['kd_komponen'],
+                // 'kd_program' => $item['kd_program'],
+                // 'kd_kegiatan' => $item['kd_kegiatan'],
+                // 'kd_kro' => $item['kd_kro'],
+                // 'kd_ro' => $item['kd_ro'],
+                // 'kd_komponen' => $item['kd_komponen'],
             ];
 
             $this->Pengajuan_barang_model->update_pengajuan($id_pengajuan, $update_data_pengajuan);
