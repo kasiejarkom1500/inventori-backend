@@ -351,10 +351,12 @@ class Permintaan_barang_api extends ApiController
         $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
         $barang = $this->Barang_model->get_id($id_barang);
 
-        if ($item['status'] === 'Approved Gudang') {
-            $update_data = ['status' => 'Approved'];
-        } elseif (!empty($item['is_buat_pengajuan'])) {
+        if (!empty($item['is_buat_pengajuan']) && $item['status'] === 'Approved Gudang') {
             $update_data = ['status' => 'Pengadaan'];
+        } elseif ($item['status'] === 'Approved Gudang' && empty($item['is_buat_pengajuan'])) {
+            $update_data = ['status' => 'Approved'];
+        } else {
+             $update_data = ['status' => $item['status']];
         }
         
 
