@@ -353,6 +353,8 @@ class Permintaan_barang_api extends ApiController
 
         if ($item['status'] === 'Approved Gudang') {
             $update_data = ['status' => 'Approved'];
+        } elseif (!empty($item['is_buat_pengajuan'])) {
+            $update_data = ['status' => 'Pengadaan'];
         }
         
 
