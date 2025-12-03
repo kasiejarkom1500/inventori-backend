@@ -107,6 +107,7 @@ class Permintaan_barang_api extends ApiController
         $transaksi_permintaan = [
             'id_ruangan' => $data[0]['id_ruangan'],
             'id_user' => $data[0]['id_user'],
+            'approved' => 1,
         ];
 
         $id_transaksi_permintaan = $this->Permintaan_barang_model->insert_transaksi_permintaan($transaksi_permintaan);
@@ -566,18 +567,18 @@ class Permintaan_barang_api extends ApiController
             'is_buat_pengajuan' => false,
         ];
 
-        if (!empty($permintaan['is_buat_pengajuan'])) {
-            $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($permintaan['id_pengajuan_lanjutan']);
-            $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($permintaan['id_permintaan_lanjutan']);
+        // if (!empty($permintaan['is_buat_pengajuan'])) {
+        //     $hapus_pengajuan = $this->Pengajuan_barang_model->hapus_pengajuan($permintaan['id_pengajuan_lanjutan']);
+        //     $hapus_permintaan = $this->Permintaan_barang_model->hapus_permintaan($permintaan['id_permintaan_lanjutan']);
 
-            if (!$hapus_pengajuan || !$hapus_permintaan) {
-                $this->db->trans_rollback();
-                return $this->response_error('Gagal rollback pengajuan dan permintaan.');
-            }
+        //     if (!$hapus_pengajuan || !$hapus_permintaan) {
+        //         $this->db->trans_rollback();
+        //         return $this->response_error('Gagal rollback pengajuan dan permintaan.');
+        //     }
 
-            $update_data['id_pengajuan_lanjutan'] = null;
-            $update_data['id_permintaan_lanjutan'] = null;
-        }
+        //     $update_data['id_pengajuan_lanjutan'] = null;
+        //     $update_data['id_permintaan_lanjutan'] = null;
+        // }
 
         $id_barang = $permintaan['id_barang'];
         $jumlah_approved = $permintaan['jumlah_approved'];
@@ -793,8 +794,9 @@ class Permintaan_barang_api extends ApiController
                 // $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
                 $this->handle_rejected_from_approved($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Approved Gudang') {
-                $update_data = ['jumlah_approved' => $permintaan['jumlah_approved'], 'status' => 'Pending', 'is_buat_pengajuan' => false];
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+                // $update_data = ['jumlah_approved' => $permintaan['jumlah_approved'], 'status' => 'Pending', 'is_buat_pengajuan' => false];
+                // $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+                $this->handle_pending_from_approved($item, $permintaan);
             } elseif ($item['status'] === 'Rejected' && $permintaan['status'] === 'Pending') {
                 $this->handle_rejected_from_pending($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Rejected') {
