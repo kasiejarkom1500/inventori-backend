@@ -793,8 +793,8 @@ class Permintaan_barang_api extends ApiController
                 // $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
                 $this->handle_rejected_from_approved($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Approved Gudang') {
-                $update_data = ['jumlah_approved' => $permintaan['jumlah_approved'], 'status' => 'Pending', 'is_buat_pengajuan' => false];
-                $this->Permintaan_barang_model->update_status($id_permintaan, $update_data);
+                // Rollback stok & log FIFO lalu kembalikan status ke Pending
+                $this->handle_pending_from_approved($item, $permintaan);
             } elseif ($item['status'] === 'Rejected' && $permintaan['status'] === 'Pending') {
                 $this->handle_rejected_from_pending($item, $permintaan);
             } elseif ($item['status'] === 'Pending' && $permintaan['status'] === 'Rejected') {
