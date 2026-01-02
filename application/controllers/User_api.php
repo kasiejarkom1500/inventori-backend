@@ -159,4 +159,86 @@ class User_api extends ApiController
             ], RESTController::HTTP_OK);
         }
     }
+
+    public function get_roles_get()
+    {
+        $roles = $this->db->get('mst_role')->result_array();
+
+        if ($roles) {
+            return $this->response([
+                'status' => true,
+                'data' => $roles
+            ], RestController::HTTP_OK);
+        }
+
+        return $this->response([
+            'status' => false,
+            'message' => 'Data tidak ditemukan',
+            'data' => []
+        ], RestController::HTTP_OK);
+    }
+
+    public function assign_role_post()
+    {
+        $id_user = $this->post('id_user');
+        $id_role = $this->post('id_role'); // bisa array
+
+        if (empty($id_user) || empty($id_role)) {
+            return $this->response([
+                'status' => 'Gagal',
+                'message' => 'id_user dan id_role wajib diisi'
+            ], RestController::HTTP_OK);
+        }
+
+        if (!is_array($id_role)) {
+            $id_role = [$id_role];
+        }
+
+        // Normalisasi dan hilangkan duplikasi
+        $id_role = array_values(array_unique(array_map('intval', $id_role)));
+
+        $this->db->trans_begin();
+
+        // Hapus role yang tidak lagi dipilih
+        $this->db->where('id_user', $id_user);
+        if (!empty($id_role)) {
+            $this->db->where_not_in('id_role', $id_role);
+        }
+        $this->db->delete('user_role');
+
+        // Ambil role yang sudah ada untuk hindari duplikasi insert
+        $existing = $this->db->select('id_role')
+            ->from('user_role')
+            ->where('id_user', $id_user)
+            ->get()
+            ->result_array();
+        $existingRoles = array_map(fn($r) => (int)$r['id_role'], $existing);
+
+        // Tambah role baru yang belum ada
+        foreach ($id_role as $role) {
+            if (in_array($role, $existingRoles, true)) {
+                continue;
+            }
+
+            $insert = $this->Role_model->create([
+                'id_user' => $id_user,
+                'id_role' => $role
+            ]);
+
+            if (!$insert) {
+                $this->db->trans_rollback();
+                return $this->response([
+                    'status' => 'Gagal',
+                    'message' => 'Gagal menambah role.'
+                ], RestController::HTTP_OK);
+            }
+        }
+
+        $this->db->trans_commit();
+
+        return $this->response([
+            'status' => 'Berhasil',
+            'message' => 'Role berhasil diperbarui'
+        ], RestController::HTTP_OK);
+    }
 }

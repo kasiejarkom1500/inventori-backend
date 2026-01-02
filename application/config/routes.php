@@ -92,6 +92,8 @@ $route['api/add_user']               = 'User_api/add_user';
 $route['api/update_user']            = 'User_api/update_user';
 $route['api/hapus_user/(:num)']      = 'User_api/hapus_user/$1';
 $route['api/assign_ruangan']         = 'User_api/assign_ruangan';
+$route['api/get_roles']              = 'User_api/get_roles';
+$route['api/assign_role']            = 'User_api/assign_role';
 $route['api/list_ruangan/(:any)']    = 'Ruangan/ruangan_all/$1';
 
 /* =======================
