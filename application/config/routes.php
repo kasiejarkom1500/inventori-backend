@@ -53,7 +53,7 @@ $route['api/get_baso']               = 'Barang_api/barang_BASO';
 $route['api/get_transaksi_permintaan']                     = 'Permintaan_barang_api/transaksi_permintaan';
 $route['api/get_detail_permintaan/(:num)/(:any)/(:num)']   = 'Permintaan_barang_api/permintaan_detail/$1/$2/$3';
 $route['api/cetak_permintaan/(:num)/(:any)']               = 'Permintaan_barang_api/cetak_permintaan/$1/$2';
-$route['api/update_status']                                = 'Permintaan_barang_api/update_status_admin';
+$route['api/update_status_admin']                          = 'Permintaan_barang_api/update_status_admin';
 $route['api/tambah_permintaan']                            = 'Permintaan_barang_api/simpan';
 $route['api/approve_transaksi/(:num)/(:num)']              = 'Permintaan_barang_api/approve_transaksi/$1/$2'; //stok berkurang
 $route['api/approve_gudang/(:num)/(:num)']                 = 'Permintaan_barang_api/approve_gudang/$1/$2';
@@ -94,6 +94,9 @@ $route['api/hapus_user/(:num)']      = 'User_api/hapus_user/$1';
 $route['api/assign_ruangan']         = 'User_api/assign_ruangan';
 $route['api/get_roles']              = 'User_api/get_roles';
 $route['api/assign_role']            = 'User_api/assign_role';
+$route['api/add_sumber']             = 'Sumber/add_sumber';
+$route['api/update_sumber']          = 'Sumber/update_sumber';
+$route['api/delete_sumber/(:num)']   = 'Sumber/delete_sumber/$1';
 $route['api/list_ruangan/(:any)']    = 'Ruangan/ruangan_all/$1';
 
 /* =======================

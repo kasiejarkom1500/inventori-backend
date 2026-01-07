@@ -202,7 +202,7 @@ class Permintaan_barang_model extends CI_Model
 
     public function get_by_id_transaksi($id_transaksi,$id_ruangan, $tanggal)
     {
-        $this->db->select('id_permintaan, tanggal,id_ruangan, kd_barang, kd_subkategori ,kd_ro , kd_komponen, nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
+        $this->db->select('permintaan.id_permintaan, permintaan.id_barang, permintaan.tanggal, permintaan.id_ruangan, kd_barang, kd_subkategori ,kd_ro , kd_komponen, nama_barang, kategori, satuan, stok, jumlah, status,is_buat_pengajuan,jumlah_approved');
         $this->db->from('permintaan');
         $this->db->join('barang', 'permintaan.id_barang = barang.id_barang');
         $this->db->where('id_transaksi', $id_transaksi);

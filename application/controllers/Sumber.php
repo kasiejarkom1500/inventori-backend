@@ -47,4 +47,90 @@ class Sumber extends ApiController {
             }
     }
 
+    public function add_sumber_post()
+    {
+        $nama_sumber = $this->post('nama_sumber');
+        $id_satker = $this->decoded_token['id_satker'];
+
+        if (empty($nama_sumber)) {
+            return $this->response([
+                'status' => false,
+                'message' => 'nama_sumber wajib diisi'
+            ], RestController::HTTP_OK);
+        }
+
+        $insert = $this->Sumber_model->insert_sumber([
+            'nama_sumber' => $nama_sumber,
+            'id_satker' => $id_satker,
+        ]);
+
+        if ($insert) {
+            return $this->response([
+                'status' => true,
+                'message' => 'Sumber berhasil ditambahkan'
+            ], RestController::HTTP_OK);
+        }
+
+        return $this->response([
+            'status' => false,
+            'message' => 'Gagal menambahkan sumber'
+        ], RestController::HTTP_OK);
+    }
+
+    public function update_sumber_post()
+    {
+        $id_sumber = $this->post('id_sumber');
+        $nama_sumber = $this->post('nama_sumber');
+        $id_satker = $this->decoded_token['id_satker'];
+
+        if (empty($id_sumber) || empty($nama_sumber)) {
+            return $this->response([
+                'status' => false,
+                'message' => 'id_sumber dan nama_sumber wajib diisi'
+            ], RestController::HTTP_OK);
+        }
+
+        $update = $this->Sumber_model->update_sumber($id_sumber, $id_satker, [
+            'nama_sumber' => $nama_sumber
+        ]);
+
+        if ($update) {
+            return $this->response([
+                'status' => true,
+                'message' => 'Sumber berhasil diperbarui'
+            ], RestController::HTTP_OK);
+        }
+
+        return $this->response([
+            'status' => false,
+            'message' => 'Gagal memperbarui sumber'
+        ], RestController::HTTP_OK);
+    }
+
+    public function delete_sumber_delete($id_sumber)
+    {
+        $id_satker = $this->decoded_token['id_satker'];
+
+        if (empty($id_sumber)) {
+            return $this->response([
+                'status' => false,
+                'message' => 'id_sumber wajib diisi'
+            ], RestController::HTTP_OK);
+        }
+
+        $delete = $this->Sumber_model->delete_sumber($id_sumber, $id_satker);
+
+        if ($delete) {
+            return $this->response([
+                'status' => true,
+                'message' => 'Sumber berhasil dihapus'
+            ], RestController::HTTP_OK);
+        }
+
+        return $this->response([
+            'status' => false,
+            'message' => 'Gagal menghapus sumber'
+        ], RestController::HTTP_OK);
+    }
+
 }

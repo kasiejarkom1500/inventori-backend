@@ -712,6 +712,19 @@ class Permintaan_barang_api extends ApiController
             $jumlah_approved = $item['jumlah_approved'];
 
             $permintaan = $this->Permintaan_barang_model->get_permintaan($id_permintaan);
+            $id_barang_input = isset($item['id_barang']) ? (int) $item['id_barang'] : null;
+
+            // Jika ada perubahan barang, perbarui permintaan sebelum proses lebih lanjut
+            if ($id_barang_input && $permintaan['id_barang'] != $id_barang_input) {
+                $this->Permintaan_barang_model->update_status($id_permintaan, [
+                    'id_barang' => $id_barang_input,
+                    'kd_subkategori' => isset($item['kd_subkategori']) ? $item['kd_subkategori'] : $permintaan['kd_subkategori']
+                ]);
+                $permintaan['id_barang'] = $id_barang_input;
+                if (isset($item['kd_subkategori'])) {
+                    $permintaan['kd_subkategori'] = $item['kd_subkategori'];
+                }
+            }
 
             if ($permintaan['status'] === 'Pengadaan' && in_array($item['status'], ['Rejected', 'Pending'], true)) {
                 return $this->response(['status' => 'Gagal', 'message' => 'Permintaan yang dalam proses pengadaan tidak dapat dibatalkan'], RestController::HTTP_OK);
@@ -722,7 +735,7 @@ class Permintaan_barang_api extends ApiController
                 $this->db->trans_begin();
 
                 $jumlah_permintaan = $permintaan['jumlah'];
-                $id_barang = $this->Permintaan_barang_model->get_id_barang($id_permintaan);
+                $id_barang = $id_barang_input ? $id_barang_input : $this->Permintaan_barang_model->get_id_barang($id_permintaan);
                 $barang = $this->Barang_model->get_id($id_barang);
 
                 if ($barang['stok'] < $jumlah_approved) {
