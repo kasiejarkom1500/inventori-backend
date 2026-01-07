@@ -695,6 +695,24 @@ class Permintaan_barang_api extends ApiController
         return $this->response(['status' => 'success', 'message' => 'Status updated and stock adjusted successfully.'], RestController::HTTP_OK);
     }
 
+/**
+ * Update status of a list of Permintaan Barang and adjust stock accordingly.
+ * Only admin gudang can call this API.
+ * The input should be a JSON object containing a list of Permintaan Barang objects.
+ * Each Permintaan Barang object must contain id_permintaan, status, and jumlah_approved.
+ * id_permintaan is the ID of the Permintaan Barang.
+ * status is the new status of the Permintaan Barang.
+ * jumlah_approved is the new approved quantity of the Permintaan Barang.
+ * If the status is 'Approved Gudang', the approved quantity will be subtracted from the current stock.
+ * If the status is 'Rejected' and the current status is 'Approved Gudang', the approved quantity will be added to the current stock.
+ * If the status is 'Pending' and the current status is 'Approved Gudang', the approved quantity will be ignored.
+ * If the status is 'Rejected' and the current status is 'Pending', the approved quantity will be ignored.
+ * If the current status is 'Pengadaan' and the status is 'Rejected' or 'Pending', the Permintaan Barang will be rejected and the approved quantity will be ignored.
+ * If the current status is 'Pengadaan' and the status is 'Approved Gudang', the Permintaan Barang will be approved and the approved quantity will be subtracted from the current stock.
+ * If the current status is 'Pengadaan' and the status is 'Approved', the Permintaan Barang will be approved and the approved quantity will be added to the current stock.
+ * If the current status is 'Pengadaan' and the status is 'Rejected', the Permintaan Barang will be rejected and the approved quantity will be ignored.
+ * If the current status is 'Pengadaan' and the status is 'Pending', the Permintaan Barang will be pending and the approved quantity will be ignored.
+ */
     public function update_status_admin_put()
     {
         $data = json_decode($this->input->raw_input_stream, true);
@@ -791,6 +809,13 @@ class Permintaan_barang_api extends ApiController
                 if (!$this->Barang_model->kurangi_stok_barang($id_barang, $jumlah_approved) && $jumlah_approved > 0) {
                     $this->db->trans_rollback();
                     return $this->response_error("Gagal mengurangi stok barang {$barang['nama_barang']}.");
+                }
+
+                $updated_barang = $this->Barang_model->get_id($id_barang);
+
+                if (!$this->Permintaan_barang_model->simpan_current_stok($id_permintaan, $updated_barang['stok'])) {
+                    $this->db->trans_rollback();
+                    return $this->response_error('Gagal menyimpan catatan stok akhir.');
                 }
 
                 $update_data = [
