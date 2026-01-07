@@ -24,8 +24,7 @@ class Permintaan_barang_model extends CI_Model
 
     public function karken_data($tgl_mulai, $tgl_selesai, $kabupaten_id = null)
     {
-
-
+        // Transaksi masuk/keluar dalam rentang tanggal (tanpa current_stok, nanti dihitung stok jalan)
         $transaksi = "
         SELECT * FROM (
             SELECT 
@@ -37,7 +36,6 @@ class Permintaan_barang_model extends CI_Model
                 beli.no_kuitansi as faktur,
                 SUM(masuk.jumlah) AS jumlah_masuk,
                 0 AS jumlah_keluar,
-                current_stok,
                 sumber.nama_sumber AS uraian,
                 barang.kategori,
                 masuk.created_at AS created_at
@@ -58,7 +56,7 @@ class Permintaan_barang_model extends CI_Model
             WHERE
                 masuk.tgl_masuk BETWEEN ? AND ? AND barang.kabupaten_id = ?
             GROUP BY 
-                masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, sumber.nama_sumber, barang.kategori, masuk.created_at
+                masuk.id_barang, masuk.tgl_masuk, beli.no_kuitansi, barang.nama_barang, barang.kd_barang, barang.satuan, sumber.nama_sumber, barang.kategori, masuk.created_at
                 
             UNION
             
@@ -71,7 +69,6 @@ class Permintaan_barang_model extends CI_Model
                 concat(REPLACE(keluar.tanggal, '-', ''),'-',keluar.id_ruangan) AS faktur,
                 0 AS jumlah_masuk,
                 SUM(keluar.jumlah_approved) AS jumlah_keluar,
-                current_stok,
                 ruangan.ruangan AS uraian,
                 barang.kategori,
                 keluar.updated_at AS created_at
@@ -88,16 +85,56 @@ class Permintaan_barang_model extends CI_Model
             WHERE
                 keluar.tanggal BETWEEN ? AND ? AND barang.kabupaten_id = ? AND status = 'Approved' AND keluar.jumlah_approved > 0
             GROUP BY 
-                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, current_stok, ruangan.ruangan, barang.kategori, keluar.updated_at
+                keluar.id_barang, keluar.tanggal, faktur, barang.nama_barang, barang.kd_barang, barang.satuan, ruangan.ruangan, barang.kategori, keluar.updated_at
         ) AS union_result
         ORDER BY created_at ASC";
-        $query = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id));
 
-        // $check = $this->db->last_query();
-        // $error = $this->db->error();
-        // echo $error['message'];
-        // die;
-        return $query->result_array();
+        $transaksi_rows = $this->db->query($transaksi, array($tgl_mulai, $tgl_selesai, $kabupaten_id, $tgl_mulai, $tgl_selesai, $kabupaten_id))->result_array();
+
+        // Hitung stok awal per barang sebelum tgl_mulai (total masuk - total keluar approved)
+        $stok_awal_sql = "
+            SELECT id_barang, SUM(total_masuk) - SUM(total_keluar) AS stok_awal
+            FROM (
+                SELECT bm.id_barang, SUM(bm.jumlah) AS total_masuk, 0 AS total_keluar
+                FROM barang_masuk bm
+                JOIN barang b ON b.id_barang = bm.id_barang
+                WHERE bm.tgl_masuk < ? AND b.kabupaten_id = ?
+                GROUP BY bm.id_barang
+                
+                UNION ALL
+                
+                SELECT p.id_barang, 0 AS total_masuk, SUM(p.jumlah_approved) AS total_keluar
+                FROM permintaan p
+                JOIN barang b2 ON b2.id_barang = p.id_barang
+                WHERE p.tanggal < ? AND b2.kabupaten_id = ? AND p.status = 'Approved' AND p.jumlah_approved > 0
+                GROUP BY p.id_barang
+            ) AS awal
+            GROUP BY id_barang";
+
+        $stok_awal_rows = $this->db->query($stok_awal_sql, array($tgl_mulai, $kabupaten_id, $tgl_mulai, $kabupaten_id))->result_array();
+        $stok_awal_map = array_column($stok_awal_rows, 'stok_awal', 'id_barang');
+
+        // Bangun stok jalan per barang
+        $result = [];
+        $running = [];
+
+        foreach ($transaksi_rows as $row) {
+            $id_barang = $row['id_barang'];
+            if (!isset($running[$id_barang])) {
+                $running[$id_barang] = isset($stok_awal_map[$id_barang]) ? (float) $stok_awal_map[$id_barang] : 0.0;
+            }
+
+            $masuk = (float) $row['jumlah_masuk'];
+            $keluar = (float) $row['jumlah_keluar'];
+
+            // Update stok jalan
+            $running[$id_barang] = $running[$id_barang] + $masuk - $keluar;
+
+            $row['current_stok'] = $running[$id_barang];
+            $result[] = $row;
+        }
+
+        return $result;
     }
 
     public function summary_karken($tgl_mulai, $tgl_selesai, $kabupaten_id)

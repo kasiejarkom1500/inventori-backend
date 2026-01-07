@@ -33,6 +33,16 @@ class Permintaan_barang_api extends ApiController
         $this->load->config('rest');
     }
 
+    // ------------------ ENDPOINT LIST ------------------
+    // transaksi_permintaan_get   : Ringkasan permintaan per tanggal untuk satker user.
+    // permintaan_detail_get      : Detail permintaan per transaksi/ruangan/tanggal (beserta penanda tangan & header surat).
+    // cetak_permintaan_get       : Ambil permintaan yang sudah approved di tanggal tertentu (untuk cetak).
+    // simpan_post                : Buat permintaan baru (bisa sekaligus membuat barang custom).
+    // update_status_put          : Ubah status permintaan (alur non-admin-gudang / ketua), termasuk rollback stok.
+    // approve_transaksi_get      : Approve transaksi permintaan (hanya set status transaksi).
+    // approve_gudang_get         : Approve/rollback oleh ketua gudang (ketua), tanpa mengurangi stok masuk (pencatatan saja).
+    // update_status_admin_put    : Ubah status oleh admin gudang (mengurangi/rollback stok FIFO, simpan current stok).
+
     /**
      * Set common CORS headers
      */
@@ -205,6 +215,8 @@ class Permintaan_barang_api extends ApiController
     }
 
     // ------------------ HANDLER STATUS ------------------
+    // handle_approved: Approve permintaan (non-admin-gudang), validasi stok, opsional buat pengajuan lanjutan,
+    //                  kurangi stok FIFO + stok barang, simpan current_stok.
     private function handle_approved($item, $permintaan, $id_transaksi_permintaan)
     {
         $id_user = $this->decoded_token['id_user'];
@@ -338,7 +350,8 @@ class Permintaan_barang_api extends ApiController
         }
     }
 
-    // handle_approved_ketua is similar to handle_approved but keeps status 'Approved' and updates transaksi
+    // handle_approved_ketua: Approve oleh ketua/gudang (tanpa kurangi stok masuk), set status akhir/lanjutan,
+    //                        opsional buat pengajuan/permintaan lanjutan, commit transaksi permintaan.
     private function handle_approved_ketua($item, $id_transaksi_permintaan)
     {
         $id_user = $this->decoded_token['id_user'];
@@ -451,6 +464,8 @@ class Permintaan_barang_api extends ApiController
     }
 
     // ------------------ ROLLBACK HANDLERS ------------------
+    // handle_rejected_from_approved: Batalkan Approved -> Rejected, hapus pengajuan/permintaan lanjutan,
+    //                                kembalikan stok barang + FIFO, simpan current_stok.
     private function handle_rejected_from_approved($item, $permintaan)
     {
         $this->db->trans_begin();
@@ -505,6 +520,8 @@ class Permintaan_barang_api extends ApiController
         $this->db->trans_commit();
     }
 
+    // handle_rejected_from_approved_ketua: Versi rollback untuk ketua/gudang (Approved Gudang -> Rejected),
+    //                                      kembalikan stok barang + FIFO, simpan current_stok.
     private function handle_rejected_from_approved_ketua($item, $permintaan)
     {
         $this->db->trans_begin();
@@ -557,6 +574,7 @@ class Permintaan_barang_api extends ApiController
         $this->db->trans_commit();
     }
 
+    // handle_pending_from_approved: Turunkan status Approved -> Pending, kembalikan stok + log FIFO, simpan current_stok.
     private function handle_pending_from_approved($item, $permintaan)
     {
         $this->db->trans_begin();
@@ -609,6 +627,7 @@ class Permintaan_barang_api extends ApiController
         $this->db->trans_commit();
     }
 
+    // handle_rejected_from_pending: Pending -> Rejected tanpa perubahan stok (belum ada pengeluaran stok).
     private function handle_rejected_from_pending($item, $permintaan)
     {
         $update_data = ['jumlah_approved' => 0, 'status' => 'Rejected'];
