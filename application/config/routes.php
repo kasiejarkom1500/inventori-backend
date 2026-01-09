@@ -73,6 +73,9 @@ $route['api/cetak_kak']        = 'Laporan_pengajuan_api/cetak_kak';
    PEMBELIAN / BARANG MASUK
 ======================= */
 $route['api/get_barang_masuk']         = 'Barang_masuk_api/all_barang_masuk';
+$route['api/update_barang_masuk/(:num)'] = 'Barang_masuk_api/update_barang_masuk/$1';
+$route['api/delete_barang_masuk/(:num)'] = 'Barang_masuk_api/delete_barang_masuk/$1';
+$route['api/adjust_barang_masuk']        = 'Barang_masuk_api/adjust_barang_masuk';
 $route['api/tambah_pembelian']         = 'Barang_masuk_api/simpan'; //stok bertambah
 $route['api/get_pembelian']            = 'Barang_masuk_api/all_pembelian';
 $route['api/detail_pembelian/(:num)']  = 'Barang_masuk_api/detail_pembelian/$1';

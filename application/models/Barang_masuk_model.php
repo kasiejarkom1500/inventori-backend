@@ -88,7 +88,12 @@ class Barang_masuk_model extends CI_Model
     public function ubah_api($id, $data)
     {
         $this->db->where('id_barang_masuk', $id);
-        return $this->db->update('barang_masuk', $data);
+        $result = $this->db->update('barang_masuk', $data);
+
+        // $error = $this->db->error();
+        // echo json_encode($error);
+        // die;    
+        return $result;
     }
 
     public function detail_pembelian($id_pembelian)
@@ -109,6 +114,14 @@ class Barang_masuk_model extends CI_Model
     public function get_id($id)
     {
         return $this->db->get_where('barang_masuk', ['id_barang_masuk' => $id])->row_array();
+    }
+
+    public function has_keluar_log($id_barang_masuk)
+    {
+        $this->db->from('barang_keluar_detail');
+        $this->db->where('id_barang_masuk', $id_barang_masuk);
+        $this->db->where('deleted_at IS NULL');
+        return $this->db->count_all_results() > 0;
     }
 
 

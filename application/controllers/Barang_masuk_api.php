@@ -34,6 +34,11 @@ class Barang_masuk_api extends ApiController
         
     }
     
+    private function response_error($message)
+    {
+        return $this->response(['status' => false, 'message' => $message], RestController::HTTP_OK);
+    }
+    
     public function all_barang_masuk_get() {
         try {
             // Ambil data barang masuk dari model
@@ -273,6 +278,244 @@ class Barang_masuk_api extends ApiController
         $results = $this->Barang_masuk_model->search_barang($term);
         
         echo json_encode($results);
+    }
+
+    /**
+     * Update barang_masuk jika stok belum terpakai (sisa_stok == jumlah dan belum ada log keluar).
+     * Body JSON: { jumlah, harga, catatan, tgl_masuk }
+     */
+    public function update_barang_masuk_put($id_barang_masuk)
+    {
+        $payload = json_decode($this->input->raw_input_stream, true);
+        if (!is_array($payload) || empty($payload)) {
+            // fallback jika client mengirim form-encoded/put data
+            $payload = $this->put();
+        }
+        if (!is_array($payload)) {
+            return $this->response_error('Invalid payload');
+        }
+
+        $bm = $this->Barang_masuk_model->get_id($id_barang_masuk);
+        if (!$bm) return $this->response_error('Data barang masuk tidak ditemukan');
+
+        // Cek apakah stok sudah terpakai
+        $sudah_terpakai = ($bm['sisa_stok'] < $bm['jumlah']) || $this->Barang_masuk_model->has_keluar_log($id_barang_masuk);
+        // Jika sudah terpakai, hanya boleh update catatan
+        $hanya_catatan =
+            isset($payload['catatan']) &&
+            !isset($payload['jumlah']) &&
+            !isset($payload['harga']) &&
+            !isset($payload['tgl_masuk']);
+        if ($sudah_terpakai && !$hanya_catatan) {
+            return $this->response_error('Tidak dapat diubah karena stok sudah terpakai. Gunakan penyesuaian.');
+        }
+
+        $jumlah_baru = isset($payload['jumlah']) ? (int)$payload['jumlah'] : (int)$bm['jumlah'];
+        $harga_baru = isset($payload['harga']) ? (int)$payload['harga'] : (int)$bm['harga'];
+        $catatan_baru = array_key_exists('catatan', $payload) ? $payload['catatan'] : $bm['catatan'];
+        $tgl_baru = isset($payload['tgl_masuk']) ? $payload['tgl_masuk'] : $bm['tgl_masuk'];
+
+        // Jika hanya catatan dan stok terpakai, cukup update catatan
+        if ($sudah_terpakai && $hanya_catatan) {
+            $this->Barang_masuk_model->ubah_api($id_barang_masuk, ['catatan' => $catatan_baru]);
+            return $this->response(['status' => true, 'message' => 'Catatan diperbarui'], RestController::HTTP_OK);
+        }
+
+        $delta = $jumlah_baru - (int)$bm['jumlah'];
+
+        $this->db->trans_begin();
+
+        // Update stok barang (sesuaikan dengan delta)
+        $barang = $this->Barang_model->get_id($bm['id_barang']);
+        if (!$barang) {
+            $this->db->trans_rollback();
+            return $this->response_error('Barang tidak ditemukan.');
+        }
+
+        $stok_baru = $barang['stok'] + $delta;
+        if ($stok_baru < 0) {
+            $this->db->trans_rollback();
+            return $this->response_error('Stok tidak mencukupi untuk perubahan ini.');
+        }
+
+        // Update stok & harga_satuan tanpa ubah kd_barang/kabupaten_id
+        $this->db->where('id_barang', $bm['id_barang']);
+        if (!$this->db->update('barang', ['stok' => $stok_baru, 'harga_satuan' => $harga_baru])) {
+            $this->db->trans_rollback();
+            return $this->response_error('Gagal mengupdate stok barang.');
+        }
+
+        // Update barang_masuk
+        $update_bm = [
+            'jumlah' => $jumlah_baru,
+            'sisa_stok' => $jumlah_baru, // karena belum terpakai
+            'harga' => $harga_baru,
+            'catatan' => $catatan_baru,
+            'tgl_masuk' => $tgl_baru,
+            'current_stok' => $stok_baru,
+        ];
+
+        if (!$this->Barang_masuk_model->ubah_api($id_barang_masuk, $update_bm)) {
+            $this->db->trans_rollback();
+            return $this->response_error('Gagal mengupdate data barang masuk.');
+        }
+
+        $this->db->trans_commit();
+        return $this->response(['status' => true, 'message' => 'Data barang masuk berhasil diupdate'], RestController::HTTP_OK);
+    }
+
+    /**
+     * Hapus barang_masuk jika stok belum terpakai.
+     */
+    public function delete_barang_masuk_delete($id_barang_masuk)
+    {
+        $bm = $this->Barang_masuk_model->get_id($id_barang_masuk);
+        if (!$bm) return $this->response_error('Data barang masuk tidak ditemukan');
+
+        $sudah_terpakai = ($bm['sisa_stok'] < $bm['jumlah']) || $this->Barang_masuk_model->has_keluar_log($id_barang_masuk);
+        if ($sudah_terpakai) {
+            return $this->response_error('Tidak dapat dihapus karena stok sudah terpakai. Gunakan penyesuaian.');
+        }
+
+        $this->db->trans_begin();
+
+        // Kurangi stok barang sesuai jumlah masuk
+        $barang = $this->Barang_model->get_id($bm['id_barang']);
+        if (!$barang) {
+            $this->db->trans_rollback();
+            return $this->response_error('Barang tidak ditemukan.');
+        }
+
+        $stok_baru = $barang['stok'] - (int)$bm['jumlah'];
+        if ($stok_baru < 0) {
+            $this->db->trans_rollback();
+            return $this->response_error('Stok tidak mencukupi untuk penghapusan ini.');
+        }
+
+        if (!$this->Barang_model->ubah_api($bm['id_barang'], ['stok' => $stok_baru])) {
+            $this->db->trans_rollback();
+            return $this->response_error('Gagal mengupdate stok barang.');
+        }
+
+        // Hapus record barang_masuk
+        $this->db->where('id_barang_masuk', $id_barang_masuk);
+        $this->db->delete('barang_masuk');
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return $this->response_error('Gagal menghapus data barang masuk.');
+        }
+
+        $this->db->trans_commit();
+        return $this->response(['status' => true, 'message' => 'Data barang masuk berhasil dihapus'], RestController::HTTP_OK);
+    }
+
+    /**
+     * Penyesuaian stok (tambah/kurangi) untuk barang_masuk.
+     * Body JSON: { id_barang_masuk, jumlah_delta, catatan }
+     * - jumlah_delta > 0 : tambah stok (jumlah & sisa_stok bertambah, stok barang naik)
+     * - jumlah_delta < 0 : kurangi stok jika sisa_stok mencukupi
+     */
+    public function adjust_barang_masuk_post()
+    {
+        $payload = json_decode($this->input->raw_input_stream, true);
+        if (!is_array($payload) || empty($payload)) {
+            $payload = $this->post();
+        }
+        if (!is_array($payload) || !isset($payload['id_barang_masuk'], $payload['jumlah_delta'])) {
+            return $this->response_error('Invalid payload. Butuh id_barang_masuk dan jumlah_delta.');
+        }
+
+        $id_barang_masuk = (int)$payload['id_barang_masuk'];
+        $delta = (int)$payload['jumlah_delta'];
+        // Catatan penyesuaian disimpan terpisah agar tidak menimpa catatan utama
+        $catatan_penyesuaian = null;
+        if (array_key_exists('catatan_penyesuaian', $payload)) {
+            $catatan_penyesuaian = $payload['catatan_penyesuaian'];
+        } elseif (array_key_exists('catatan', $payload)) {
+            // fallback dari payload lama
+            $catatan_penyesuaian = $payload['catatan'];
+        }
+
+        if ($delta === 0) {
+            return $this->response_error('jumlah_delta tidak boleh 0');
+        }
+
+        $bm = $this->Barang_masuk_model->get_id($id_barang_masuk);
+        if (!$bm) return $this->response_error('Data barang masuk tidak ditemukan');
+
+        $barang = $this->Barang_model->get_id($bm['id_barang']);
+        if (!$barang) return $this->response_error('Barang tidak ditemukan.');
+
+        $this->db->trans_begin();
+
+        if ($delta > 0) {
+            // Tambah stok
+            $jumlah_baru = $bm['jumlah'] + $delta;
+            $sisa_baru = $bm['sisa_stok'] + $delta;
+            $stok_barang_baru = $barang['stok'] + $delta;
+
+            // Update stok barang secara langsung
+            $this->db->where('id_barang', $bm['id_barang']);
+            if (!$this->db->update('barang', ['stok' => $stok_barang_baru])) {
+                $this->db->trans_rollback();
+                return $this->response_error('Gagal update stok barang.');
+            }
+
+            $update_bm = [
+                'jumlah' => $jumlah_baru,
+                'sisa_stok' => $sisa_baru,
+                'current_stok' => $stok_barang_baru,
+            ];
+            if ($catatan_penyesuaian !== null) {
+                $update_bm['catatan_penyesuaian'] = $catatan_penyesuaian;
+            }
+
+        if (!$this->Barang_masuk_model->ubah_api($id_barang_masuk, $update_bm)) {
+            // debug: tampilkan error DB
+
+            $this->db->trans_rollback();
+            return $this->response_error('Gagal update penyesuaian barang masuk.');
+        }
+        } else {
+            // Kurangi stok
+            $kurang = abs($delta);
+            if ($bm['sisa_stok'] < $kurang) {
+                $this->db->trans_rollback();
+                return $this->response_error('Sisa stok tidak mencukupi untuk pengurangan ini.');
+            }
+
+            $jumlah_baru = $bm['jumlah'] - $kurang;
+            $sisa_baru = $bm['sisa_stok'] - $kurang;
+            $stok_barang_baru = $barang['stok'] - $kurang;
+            if ($stok_barang_baru < 0) {
+                $this->db->trans_rollback();
+                return $this->response_error('Stok barang menjadi negatif.');
+            }
+
+            $this->db->where('id_barang', $bm['id_barang']);
+            if (!$this->db->update('barang', ['stok' => $stok_barang_baru])) {
+                $this->db->trans_rollback();
+                return $this->response_error('Gagal update stok barang.');
+            }
+
+            $update_bm = [
+                'jumlah' => $jumlah_baru,
+                'sisa_stok' => $sisa_baru,
+                'current_stok' => $stok_barang_baru,
+            ];
+            if ($catatan_penyesuaian !== null) {
+                $update_bm['catatan_penyesuaian'] = $catatan_penyesuaian;
+            }
+
+            if (!$this->Barang_masuk_model->ubah_api($id_barang_masuk, $update_bm)) {
+                $this->db->trans_rollback();
+                return $this->response_error('Gagal update penyesuaian barang masuk.');
+            }
+        }
+
+        $this->db->trans_commit();
+        return $this->response(['status' => true, 'message' => 'Penyesuaian stok berhasil'], RestController::HTTP_OK);
     }
 
 	public function barang_details_get()
