@@ -147,7 +147,12 @@ class Barang_api extends ApiController
         $harga_satuan = $this->post('harga_satuan');
         $stok_dasar = $this->post('stok_dasar');
         $kd_subkategori = $this->post('kd_subkategori');
-        $kabupaten_id = $this->post('kabupaten_id');
+        $kabupaten_id = $this->post('kabupaten_id') ?: ($this->decoded_token['id_satker'] ?? null);
+
+        // Auto-generate kd_barang jika tidak diisi
+        if (!$kd_barang && $kd_subkategori) {
+            $kd_barang = $this->Barang_model->get_next_kode_barang($kd_subkategori);
+        }
 
         $data_barang = [
             'kd_subkategori' => $kd_subkategori,
